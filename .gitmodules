@@ -1,3 +1,9 @@
 [submodule "vendors/hify"]
 	path = vendors/hify
 	url = https://github.com/socutes/hify
+[submodule "vendors/dify"]
+	path = vendors/dify
+	url = https://github.com/langgenius/dify
+[submodule "vendors/PaiAgent"]
+	path = vendors/PaiAgent
+	url = https://github.com/itwanger/PaiAgent
