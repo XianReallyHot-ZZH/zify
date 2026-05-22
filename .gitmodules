@@ -1,0 +1,3 @@
+[submodule "vendors/hify"]
+	path = vendors/hify
+	url = https://github.com/socutes/hify
