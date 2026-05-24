@@ -1,14 +1,29 @@
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# IDE
+# Editors / IDE
 .idea/
-*.iml
 .vscode/
+*.iml
 *.swp
 *.swo
 *~
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 # Java / Maven
 target/
@@ -16,17 +31,34 @@ target/
 *.jar
 *.war
 *.ear
-*.log
 hs_err_pid*
+replay_pid*
 
-# Node (frontend)
+# Node / frontend
 node_modules/
 dist/
+build/
+coverage/
+.vite/
+.next/
+.nuxt/
+.output/
+.turbo/
+.cache/
 
-# Docker
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local runtime data
 docker-data/
-
-# Env
-.env
-.env.*
-!.env.example
+storage/
+uploads/
+runtime/
+tmp/
+temp/
