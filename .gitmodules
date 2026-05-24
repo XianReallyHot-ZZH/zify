@@ -3,7 +3,7 @@
 	url = https://github.com/socutes/hify
 [submodule "vendors/dify"]
 	path = vendors/dify
-	url = https://github.com/langgenius/dify
+	url = https://github.com/langgenius/dify.git
 [submodule "vendors/PaiAgent"]
 	path = vendors/PaiAgent
 	url = https://github.com/itwanger/PaiAgent
