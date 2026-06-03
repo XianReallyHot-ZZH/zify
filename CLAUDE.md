@@ -17,8 +17,8 @@ Zify 是模块化单体 AI 应用。一人开发，一期面向 ~50 人内部使
 
 技术栈：
 
-- 后端：单 Spring Boot 应用、**Maven 多模块工程**、Java 21、Spring Boot 4.0、Spring AI 2.0、MyBatis-Plus。
-- 前端：React 18 + TypeScript + Vite + React Router + React Flow + Zustand + Axios + Ant Design。
+- 后端：Spring Boot 应用、**Maven 多模块工程**（一个父 POM + 多个子模块 + 一个启动模块 `zify-app`）、Java 21、Spring Boot 4.0、Spring AI 2.0、MyBatis-Plus。
+- 前端：`zify-web` 子模块（React 18 + TypeScript + Vite + React Router + React Flow + Zustand + Axios + Ant Design）。构建产物由 `zify-nginx` 直接服务。
 - 数据：MySQL 8.x（业务数据）、PostgreSQL + pgvector（chunk 和 embedding）、Redis 7（短生命周期缓存、进度和限流）。
 - 部署：Docker + K8s，单副本。详见 §8。
 
@@ -52,7 +52,10 @@ tool       MCP / HTTP / Workflow-as-Tool 定义和工具调用入口描述
 trigger    Webhook 接收、Cron 调度、触发日志
 model      Provider 配置、API Key 使用、LLM/Embedding/Rerank 调用
 common     仅放基础设施：配置、异常、统一响应、工具类
+app        启动模块：聚合所有后端子模块，@SpringBootApplication 主类、配置文件、Flyway 迁移脚本
 ```
+
+前端模块：`zify-web`（React 18 + TypeScript + Vite）。不是 Spring Boot 子模块，由 Vite 独立构建。
 
 允许的模块依赖（每个子模块还隐式依赖 `zify-common`，通过父 POM `<dependencyManagement>` 统一管理版本）：
 
@@ -66,6 +69,7 @@ agent     -> common, model, tool, knowledge, workflow
 engine    -> common, agent, model, tool, knowledge, workflow
 chat      -> common, agent, engine
 trigger   -> common, workflow
+app       -> 所有后端子模块（启动模块，聚合打包）
 ```
 
 功能实现顺序：
@@ -73,13 +77,13 @@ trigger   -> common, workflow
 1. 判断功能所属模块。如果需要其他模块能力，检查依赖关系是否允许。
 2. **验证当前子模块 `pom.xml` 是否已声明对目标模块的 Maven 依赖**；未声明则先添加。
 3. 在当前模块 `api/dto` 中新增或复用 Facade DTO。
-3. 新增 Entity、Mapper、Converter。
-4. 新增 Service 和事务边界。
-5. 新增 FacadeImpl。
-6. 新增 Controller、HTTP Request、HTTP Response。
-7. 如果是用户可见功能，再新增前端 API、类型、页面和组件。
+4. 新增 Entity、Mapper、Converter。
+5. 新增 Service 和事务边界。
+6. 新增 FacadeImpl。
+7. 新增 Controller、HTTP Request、HTTP Response。
 8. 确认没有引入禁止的跨模块引用。
 9. 确认子模块 `pom.xml` 的 `<dependency>` 声明与依赖图完全匹配。
+10. 如果是用户可见功能，再新增前端 API、类型、页面和组件（在 `zify-web` 中）。
 
 ---
 
@@ -87,35 +91,98 @@ trigger   -> common, workflow
 
 ### 目录结构
 
-每个后端业务模块是一个独立 Maven 子模块（以 `zify-agent` 为例）：
+项目顶层布局（父 POM + 所有子模块）：
+
+```text
+zify/                                    父 POM (packaging=pom)
+├── pom.xml                              <modules> + <dependencyManagement> + <properties>
+├── zify-common/                         基础设施
+├── zify-model/                          Provider、LLM/Embedding 调用
+├── zify-tool/                           MCP / HTTP / Workflow-as-Tool
+├── zify-knowledge/                      文档、解析、分块、Embedding、pgvector
+├── zify-workflow/                       工作流编辑、节点执行、变量传递
+├── zify-agent/                          Agent CRUD、Prompt、绑定
+├── zify-engine/                         Agent 执行、ReAct、流式响应
+├── zify-chat/                           会话和消息持久化
+├── zify-trigger/                        Webhook、Cron、触发日志
+├── zify-app/                            Spring Boot 启动模块
+└── zify-web/                            前端（React + Vite，独立构建）
+```
+
+父 POM 职责：
+
+- `<packaging>pom</packaging>`，不产出 JAR。
+- `<modules>` 声明所有子模块，Maven 反应堆自动计算构建顺序。
+- `<dependencyManagement>` 统一管理 Spring Boot、Spring AI、MyBatis-Plus 等第三方版本和 `zify-common` 等项目内模块版本。
+- 子模块 POM 省略版本号，从父 POM 继承。
+
+每个后端业务子模块内部结构（以 `zify-agent` 为例）：
 
 ```text
 zify-agent/
 ├── pom.xml
-└── src/main/java/com/zify/agent/
-    ├── api/
-    │   ├── {Module}Facade.java
-    │   └── dto/
-    ├── domain/
-    │   ├── {Module}Service.java
-    │   ├── executor/
-    │   ├── handler/
-    │   └── validator/
-    ├── infrastructure/
-    │   ├── entity/
-    │   ├── mapper/
-    │   ├── repository/        # 可选，仅复杂查询或多 Mapper 编排时创建
-    │   ├── converter/
-    │   ├── facade/
-    │   └── client/
-    └── adapter/
-        ├── web/
-        │   ├── request/
-        │   └── response/
-        └── sse/               # 只有需要 SSE/流式接口时创建
+└── src/
+    ├── main/java/com/zify/agent/
+    │   ├── api/
+    │   │   ├── {Module}Facade.java
+    │   │   └── dto/
+    │   ├── domain/
+    │   │   ├── {Module}Service.java
+    │   │   ├── executor/
+    │   │   ├── handler/
+    │   │   └── validator/
+    │   ├── infrastructure/
+    │   │   ├── entity/
+    │   │   ├── mapper/
+    │   │   ├── repository/        # 可选，仅复杂查询或多 Mapper 编排时创建
+    │   │   ├── converter/
+    │   │   ├── facade/
+    │   │   └── client/
+    │   └── adapter/
+    │       ├── web/
+    │       │   ├── request/
+    │       │   └── response/
+    │       └── sse/               # 只有需要 SSE/流式接口时创建
+    └── main/resources/
+        └── mapper/                # MyBatis XML Mapper（如有）
 ```
 
-启动模块 `zify-app` 聚合所有子模块，包含 `@SpringBootApplication` 主类、配置文件和 Flyway 迁移脚本。
+`zify-app` 启动模块结构：
+
+```text
+zify-app/
+├── pom.xml                            依赖所有后端子模块
+└── src/
+    ├── main/java/com/zify/
+    │   └── ZifyApplication.java       @SpringBootApplication 主类
+    └── main/resources/
+        ├── application.yml            主配置文件
+        ├── application-dev.yml        本地开发 profile
+        ├── application-prod.yml       生产 profile
+        └── db/migration/              Flyway 迁移脚本（按模块前缀命名）
+            ├── V1__agent__create_agent_table.sql
+            ├── V2__chat__create_message_table.sql
+            └── ...
+```
+
+`zify-web` 前端模块结构（见 §4）：
+
+```text
+zify-web/
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+└── src/
+    ├── app/        App.tsx、router.tsx、providers.tsx、layouts/
+    ├── pages/      路由页面和页面私有组件/Hook
+    ├── features/   可复用业务组件、复杂业务 UI、业务 Hook
+    ├── api/        HTTP API 封装
+    ├── stores/     Zustand 全局客户端状态
+    ├── types/      HTTP 契约类型和前端视图类型
+    ├── shared/     无业务含义的 UI、Hook、工具函数
+    ├── styles/
+    └── main.tsx
+```
 
 ### 分层与调用规则
 
@@ -188,24 +255,9 @@ DEBUG  调试细节，生产默认不输出。循环内日志默认用 DEBUG。
 
 ---
 
-## §4 前端代码组织
+## §4 前端代码组织（`zify-web`）
 
-前端使用 Vite + React Router。禁止 Next.js App Router。
-
-顶层结构：
-
-```text
-src/
-├── app/        App.tsx、router.tsx、providers.tsx、layouts/
-├── pages/      路由页面和页面私有组件/Hook
-├── features/   可复用业务组件、复杂业务 UI、业务 Hook
-├── api/        HTTP API 封装，一个文件对应一个后端 HTTP 模块
-├── stores/     Zustand 全局客户端状态
-├── types/      HTTP 契约类型和前端视图类型
-├── shared/     无业务含义的 UI、Hook、工具函数
-├── styles/
-└── main.tsx
-```
+前端代码在 `zify-web` 子模块中，使用 Vite + React Router。禁止 Next.js App Router。`zify-web` 不是 Spring Boot 模块，由 Vite 独立构建（`npm run build`），产物输出到 `zify-web/dist/`，由 `zify-nginx` 直接服务静态资源。
 
 路由：
 
@@ -309,7 +361,7 @@ zify-engine / zify-workflow / zify-knowledge -> zify-model 内 ModelFacade -> Mo
 硬性规则：
 
 - 只有 `zify-model` 子模块内的 `infrastructure/client` 可以直接访问 LLM API。使用 Java 21 Virtual Threads + Spring `RestClient`。
-- API Key 只在 `model` 模块内读取和使用，禁止返回给其他模块或前端，禁止记录到日志。
+- API Key 只在 `zify-model` 子模块内读取和使用，禁止返回给其他模块或前端，禁止记录到日志。
 - Controller 不开线程。SSE 场景下 Controller 只创建 `SseEmitter`，交给 Service。
 - SSE 断开 / 超时 / 发送失败时，必须取消上游 LLM 调用。Provider Client 必须定期检查中断状态。
 
@@ -354,9 +406,9 @@ Agent：ReAct Agent 绑定模型、工具、知识库。Workflow Agent 绑定一
 
 ## §8 部署与性能
 
-生产拓扑：Ingress（TLS）→ zify-nginx（静态资源 + `/api/**` 代理，SSE 路径关闭 buffering）→ zify-server（`zify-app` 启动模块打包）→ MySQL / PostgreSQL+pgvector / Redis / uploads PVC / 外部 LLM。
+生产拓扑：Ingress（TLS）→ zify-nginx（`zify-web/dist/` 静态资源 + `/api/**` 代理，SSE 路径关闭 buffering）→ zify-server（`zify-app` 启动模块打包）→ MySQL / PostgreSQL+pgvector / Redis / uploads PVC / 外部 LLM。
 
-构建：项目根目录 `mvn package`，Docker 镜像只从 `zify-app/target/` 打包。
+构建：后端项目根目录 `mvn package`，Docker 镜像只从 `zify-app/target/` 打包。前端在 `zify-web/` 目录下 `npm run build`，产物由 Nginx 服务。
 
 核心约束：
 
@@ -386,6 +438,7 @@ LLM Provider 最大并发: 20    Hikari 最大连接池: 20
 
 - [ ] 模块归属正确，跨模块依赖在允许列表中。
 - [ ] 子模块 `pom.xml` 的 `<dependency>` 声明与 §2 依赖图完全匹配。
+- [ ] 新增业务子模块时，同步更新父 POM `<modules>` 和 `zify-app` 的依赖。
 - [ ] 跨模块调用只走目标 Facade，Controller 只调用本模块 Service。
 - [ ] 没有 Entity / Mapper / Repository / Service 跨模块。
 - [ ] HTTP Request / Response 没有进入 domain 层。
@@ -393,12 +446,12 @@ LLM Provider 最大并发: 20    Hikari 最大连接池: 20
 - [ ] Converter 负责 Entity / DTO / HTTP 对象转换。
 - [ ] 命名、异常、日志、并发遵守 §3 规范。
 
-前端：
+前端（`zify-web`）：
 
-- [ ] 路由在 `src/app/router.tsx` 中声明，页面在 `pages/`。
-- [ ] 可复用业务 UI 在 `features/`，无业务共享 UI 在 `shared/ui`。
-- [ ] API 文件是 `api/{module}Api.ts`，类型对齐 HTTP request/response。
-- [ ] Zustand 只存跨组件状态。SSE 逻辑拆分在 `api/engineApi.ts` 和 `features/chat/hooks/`。
+- [ ] 路由在 `zify-web/src/app/router.tsx` 中声明，页面在 `zify-web/src/pages/`。
+- [ ] 可复用业务 UI 在 `zify-web/src/features/`，无业务共享 UI 在 `zify-web/src/shared/ui`。
+- [ ] API 文件是 `zify-web/src/api/{module}Api.ts`，类型对齐 HTTP request/response。
+- [ ] Zustand 只存跨组件状态。SSE 逻辑拆分在 `zify-web/src/api/engineApi.ts` 和 `zify-web/src/features/chat/hooks/`。
 
 数据库：
 

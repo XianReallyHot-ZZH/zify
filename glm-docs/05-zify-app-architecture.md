@@ -46,7 +46,8 @@ zify/                                  父 POM (packaging=pom)
 ├── zify-engine/                       Agent 执行、ReAct、流式响应
 ├── zify-chat/                         会话和消息持久化
 ├── zify-trigger/                      Webhook、Cron、触发日志
-└── zify-app/                          Spring Boot 启动模块（聚合所有子模块）
+├── zify-app/                          Spring Boot 启动模块（聚合所有后端子模块）
+└── zify-web/                          前端（React + Vite，独立构建）
 ```
 
 每个子模块内部结构（以 `zify-agent` 为例）：
@@ -62,7 +63,7 @@ zify-agent/
 ```
 
 - **优点**：编译级隔离，边界最强。Facade 接口为将来拆分留好接缝。Maven 反应堆自动处理构建顺序。
-- **缺点**：一个人维护 10 个子模块，改字段要跨模块同步 DTO。但 Facade 接口约束已在单模块阶段验证过，迁移成本可控。
+- **缺点**：一个人维护 11 个子模块，改字段要跨模块同步 DTO。但 Facade 接口约束已在单模块阶段验证过，迁移成本可控。
 
 ### 方案 C：微服务拆分（❌ 一期不用）
 

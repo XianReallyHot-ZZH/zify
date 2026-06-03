@@ -34,7 +34,8 @@ zify/                              父 POM (packaging=pom)
 ├── zify-engine/                   # Agent 对话引擎：ReAct 循环、流式响应、工具调用编排
 ├── zify-chat/                     # 对话管理：会话列表、消息流、新建/删除会话
 ├── zify-trigger/                  # 触发器：Webhook 接收、Cron 调度、触发记录
-└── zify-app/                      # Spring Boot 启动模块（聚合所有子模块）
+├── zify-app/                      # Spring Boot 启动模块（聚合所有后端子模块）
+└── zify-web/                      # 前端（React + Vite，独立构建）
 ```
 
 ---

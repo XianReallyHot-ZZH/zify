@@ -604,7 +604,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./zify-web/dist:/usr/share/nginx/html:ro
+      - ./zify-web/dist:/usr/share/nginx/html:ro    # zify-web 的 Vite 构建产物
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - zify-server
