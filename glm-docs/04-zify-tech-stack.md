@@ -6,7 +6,7 @@
 
 ## 选型结论
 
-**Spring Boot 3 + React**
+**Spring Boot 4.0 + Spring AI 2.0 + React**
 
 ---
 
@@ -17,9 +17,9 @@
 | 层 | 技术 | 版本 | 说明 |
 |----|------|------|------|
 | 语言 | Java | 21 LTS | Virtual Threads 适合 IO 密集的 Agent 调用场景 |
-| 框架 | Spring Boot | 3.x | 单体应用，模块化组织 |
-| AI 框架 | Spring AI | 1.0 | LLM 调用、向量检索、工具调用 |
-| MCP | MCP Java SDK | - | 连接外部 MCP Server（Spring 团队维护） |
+| 框架 | Spring Boot | 4.0 | 单体应用，模块化组织 |
+| AI 框架 | Spring AI | 2.0.0 | 完整 AI 应用框架：LLM 调用、向量检索、工具调用、原生 OpenAI SDK、MCP 集成 |
+| MCP | MCP Java SDK | - | 连接外部 MCP Server（Spring 团队维护，Spring AI 2.0 内置） |
 | ORM | MyBatis-Plus | 3.5+ | 业务数据（MySQL） |
 | 向量存储 | Spring AI VectorStore + PGVector | - | 知识库向量检索（PostgreSQL） |
 | 文档解析 | Apache POI + PDFBox | - | PDF / Word / TXT / Markdown |
@@ -67,7 +67,7 @@
 ## 双数据库架构
 
 ```
-Spring Boot 应用
+Spring Boot 4.0 应用
 ├── MySQL 数据源（MyBatis-Plus）
 │   ├── Agent 配置
 │   ├── 对话记录
@@ -86,17 +86,24 @@ Spring Boot 应用
 
 ## 选型理由
 
-### 为什么选 Spring Boot 而不是 Python FastAPI
+### 为什么选 Spring Boot 4.0 + Spring AI 2.0
 
-| 维度 | Spring Boot | FastAPI | 结论 |
-|------|-------------|---------|------|
-| 团队匹配 | 团队都是 Java，后续可交接 | 团队不会 Python，只有一个人维护 | **Spring Boot 胜** |
-| 规模化 | 千人规模下的事务管理、连接池、监控是框架级支持 | 需要额外工程化建设 | **Spring Boot 胜** |
-| 工程化 | 依赖注入、模块化、AOP、定时任务全部开箱即用 | 需要自己搭建或引入第三方库 | **Spring Boot 胜** |
-| AI 生态 | Spring AI 1.0 + MCP Java SDK，够用但不丰富 | LangChain + LlamaIndex，断档领先 | **FastAPI 胜** |
-| 一个人开发效率 | Java 代码量多，但 IDE 辅助好 | Python 代码量少，迭代快 | **FastAPI 略胜** |
+| 维度 | Spring Boot 4.0 + Spring AI 2.0 | Python FastAPI + LangChain |
+|------|----------------------------------|---------------------------|
+| 团队匹配 | 团队都是 Java，后续可交接 | 团队不会 Python，只有一个人维护 |
+| 规模化 | 千人规模下的事务管理、连接池、监控是框架级支持 | 需要额外工程化建设 |
+| 工程化 | 依赖注入、模块化、AOP、定时任务全部开箱即用 | 需要自己搭建或引入第三方库 |
+| AI 生态 | Spring AI 2.0 已升级为完整 AI 框架，原生 OpenAI SDK、MCP 内置 | LangChain + LlamaIndex，生态最丰富 |
+| 一个人开发效率 | Java 代码量多，但 IDE 辅助好 | Python 代码量少，迭代快 |
+| 长期维护 | Spring Boot 3.x 于 2026-06-30 EOL，4.0 是当前长期支持版本 | 无此问题 |
 
-**结论**：团队匹配和规模化是硬约束，AI 生态差距可以通过 Spring AI + 自行封装补上。
+**结论**：团队匹配和规模化是硬约束。Spring AI 2.0 从集成库升级为完整 AI 框架，AI 生态差距进一步缩小。项目尚未开始编码，选用最新版本迁移成本为零。
+
+### 为什么选 Spring Boot 4.0 而不是 3.x
+
+- Spring Boot 3.x 于 2026-06-30 EOL，不再获得安全更新和 Bug 修复
+- Zify 尚未开始编码，没有历史代码迁移成本
+- Spring AI 2.0（完整 AI 框架）需要 Spring Boot 4.0
 
 ### 为什么选 React 而不是 Vue
 
@@ -104,4 +111,4 @@ Spring Boot 应用
 
 ### 为什么选 Java 21 而不是 Java 17
 
-Java 21 是当前 LTS 版本，Virtual Threads 正式可用——Agent 的 ReAct 循环中大量等待 LLM 响应、工具调用等 IO 操作，虚拟线程可以大幅简化异步编程模型，不需要手动管理线程池。Spring Boot 3.2+ 完全支持。
+Java 21 是当前 LTS 版本，Virtual Threads 正式可用——Agent 的 ReAct 循环中大量等待 LLM 响应、工具调用等 IO 操作，虚拟线程可以大幅简化异步编程模型，不需要手动管理线程池。Spring Boot 4.0 完全支持。
