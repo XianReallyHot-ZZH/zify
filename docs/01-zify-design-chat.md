@@ -50,6 +50,33 @@ Zify 是模块化单体，技术栈 Spring Boot + React + MySQL + Redis + pgvect
 ### 性能瓶颈预判
 基于 Zify 当前的部署架构，帮我分析：这个系统的性能瓶颈可能在哪？ 按严重程度排序，每个瓶颈给出触发条件和一期是否需要处理。
 
+### 数据库规范
+Zify 用 MySQL 8.x + pgvector。帮我定义数据库层面的性能规范， 覆盖：索引设计原则、大表预判和应对策略、分页查询注意事项、通用字段约定。 要求具体到 AI 建表时能直接执行。
+
+
+## Claude Code 实战技巧
+目标：用业界规范喂 Claude Code 生成 CLAUDE.md
+
+### 生成完整 CLAUDE.md
+
+以下是 Zify 项目前期做的所有决策：
+@glm-docs/02-zify-v01-modules.md
+@glm-docs/03-zify-v01-frontend-view.md
+@glm-docs/04-zify-tech-stack.md
+@glm-docs/05-zify-app-architecture.md
+@glm-docs/06-zify-code-organization.md
+@glm-docs/07-zify-LLM-api-calling.md
+@glm-docs/08-zify-deployment-architecture.md
+@glm-docs/09-zify-performance-bottleneck.md
+@glm-docs/10-zify-database-spec.md
+基于以上决策，请帮我合并生成一份完整的 CLAUDE.md，作为 Zify 项目规范，要求内容完整、精炼，具有渐进式披露的特性。
+
+### 业界规范喂入
+
+基于阿里巴巴 Java 开发手册，面向 Spring Boot 项目， 帮我提炼出最关键的 20 条编码规范，写成 CLAUDE.md 可以直接用的格式。 重点覆盖命名、异常处理、日志、并发这几个方面。 不要照搬原文，要精简到 AI 能直接执行。
+
+
+
 
 
 
