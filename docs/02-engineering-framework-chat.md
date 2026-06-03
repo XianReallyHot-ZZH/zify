@@ -10,7 +10,7 @@
 
 ### 第二步：生成父 pom 和子模块结构
 
-按照 CLAUDE.md 中定义的项目结构，创建 Zify 的 Maven 多模块工程骨架。
+按照 CLAUDE.md 中定义的项目结构，创建 Zify 后端的 Maven 多模块工程骨架。
 父 pom 声明所有子模块，dependencyManagement 统一管理版本。
 只创建 pom 文件和目录结构，不需要任何 Java 代码。
 
