@@ -38,6 +38,16 @@ Zify 是模块化单体，后端服务使用 Spring Boot + MyBatis-Plus。模块
 ### 外部 LLM API 调用设计
 Zify 要调用多个外部 LLM API（OpenAI、Anthropic、DeepSeek、智谱），这些调用慢且不稳定。从线程管理、超时、重试、容错四个维度，给出完整的外部调用技术方案。
 
+追问：流式响应用 SSE，Spring MVC 怎么处理？需不需要引入 WebFlux？还是 SseEmitter？
+
+
+## 场景三：部署架构与数据设计规范
+目标：设计当前部署架构、预判性能瓶颈、规划扩展路径、定义数据模型和数据库规范。
+
+### 当前部署架构
+Zify 是模块化单体，技术栈 Spring Boot + React + MySQL + Redis + pgvector。 目标 50 人内部使用，生产环境用 Docker + K8s 部署。 帮我设计当前阶段的部署架构：有哪些组件、请求怎么流转、每个组件的职责是什么。
+
+
 
 
 
