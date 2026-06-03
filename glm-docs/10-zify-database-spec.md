@@ -15,6 +15,8 @@
 | MySQL 8.x | Agent、对话、工作流、工具、触发器、模型配置、运行日志、文件元数据 |
 | PostgreSQL + pgvector | 知识库 chunk、embedding、向量检索 |
 
+数据库迁移脚本统一放在 `zify-app/src/main/resources/db/migration/`（Flyway），按模块前缀命名（如 `V1__agent__create_agent_table.sql`）。
+
 ### 1.2 命名规则
 
 | 对象 | 规则 | 示例 |

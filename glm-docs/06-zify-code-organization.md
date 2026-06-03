@@ -9,71 +9,77 @@
 
 ## 一、全局原则
 
-- Zify 后端一期采用单 Spring Boot 应用、单 Maven 工程。
-- 所有业务模块都放在 `src/main/java/com/zify/{module}/` 下。
-- 模块名使用小写英文：`agent`、`chat`、`engine`、`workflow`、`knowledge`、`tool`、`trigger`、`model`。
-- `common` 不是业务模块，只放全局基础设施和通用工具。
+- Zify 后端一期采用单 Spring Boot 应用、**Maven 多模块工程**。
+- 每个业务模块是独立的 Maven 子模块（`zify-{module}`），位于项目根目录下。
+- 启动模块 `zify-app` 聚合所有子模块依赖，包含 `@SpringBootApplication` 主类和配置文件。
+- 模块名使用小写英文：`agent`、`chat`、`engine`、`workflow`、`knowledge`、`tool`、`trigger`、`model`、`common`。
+- `common` 是独立 Maven 子模块 `zify-common`，只放全局基础设施和通用工具，所有子模块都依赖它。
 - 任何跨模块调用都必须走被调用模块的 `api` 层 Facade。
-- 未在本文“模块间依赖关系”中列出的跨模块依赖，一律禁止。确实需要新增依赖时，先更新本文档，再写代码。
+- **Maven `<dependency>` 声明必须与”模块间依赖关系”完全匹配**，编译时强制边界。
+- 未在本文”模块间依赖关系”中列出的跨模块依赖，一律禁止。确实需要新增依赖时，先更新本文档，再写代码。
 
 ---
 
 ## 二、模块清单
 
 ```text
-src/main/java/com/zify/
-├── agent/          # Agent 管理：创建/编辑 Agent，配置 Prompt、模型、工具、知识库、工作流
-├── chat/           # 对话管理：会话列表、消息流、新建/删除会话
-├── engine/         # Agent 对话引擎：ReAct 循环、流式响应、工具调用编排
-├── workflow/       # 工作流引擎：画布编排、节点执行、变量传递、运行日志
-├── knowledge/      # 知识库 RAG：文档上传、解析、分块、向量化、检索、命中测试
-├── tool/           # 统一工具系统：MCP / HTTP / Workflow-as-Tool 的注册与执行入口描述
-├── trigger/        # 触发器：Webhook 接收、Cron 调度、触发记录
-├── model/          # 模型管理：Provider 配置、模型连通性测试
-└── common/         # 公共基础设施：配置、异常、统一响应、通用工具
+zify/                              父 POM (packaging=pom)
+├── pom.xml                        <modules> + <dependencyManagement>
+├── zify-common/                   # 公共基础设施：配置、异常、统一响应、通用工具
+├── zify-model/                    # 模型管理：Provider 配置、模型连通性测试
+├── zify-tool/                     # 统一工具系统：MCP / HTTP / Workflow-as-Tool
+├── zify-knowledge/                # 知识库 RAG：文档上传、解析、分块、向量化、检索
+├── zify-workflow/                 # 工作流引擎：画布编排、节点执行、变量传递、运行日志
+├── zify-agent/                    # Agent 管理：创建/编辑 Agent，配置 Prompt、模型、工具、知识库、工作流
+├── zify-engine/                   # Agent 对话引擎：ReAct 循环、流式响应、工具调用编排
+├── zify-chat/                     # 对话管理：会话列表、消息流、新建/删除会话
+├── zify-trigger/                  # 触发器：Webhook 接收、Cron 调度、触发记录
+└── zify-app/                      # Spring Boot 启动模块（聚合所有子模块）
 ```
 
 ---
 
 ## 三、业务模块目录结构
 
-每个业务模块统一使用以下结构：
+每个业务模块统一使用以下结构（以 `zify-agent` 为例）：
 
 ```text
-src/main/java/com/zify/{module}/
-├── api/
-│   ├── {Module}Facade.java
-│   └── dto/
-│       ├── XxxDTO.java
-│       ├── XxxCommand.java
-│       ├── XxxQuery.java
-│       └── XxxResult.java
-├── domain/
-│   ├── {Module}Service.java
-│   ├── executor/
-│   ├── handler/
-│   └── validator/
-├── infrastructure/
-│   ├── entity/
-│   │   └── XxxEntity.java
-│   ├── mapper/
-│   │   └── XxxMapper.java
-│   ├── repository/        # 可选：复杂查询或多 Mapper 编排时才建
-│   ├── converter/
-│   │   └── XxxConverter.java
-│   ├── facade/
-│   │   └── {Module}FacadeImpl.java
-│   └── client/
-│       └── XxxClient.java
-└── adapter/
-    ├── web/
-    │   ├── {Module}Controller.java
-    │   ├── request/
-    │   │   └── XxxRequest.java
-    │   └── response/
-    │       └── XxxResponse.java
-    └── sse/               # 只有需要 SSE/流式接口的模块才建
-        └── XxxSseController.java
+zify-agent/
+├── pom.xml
+└── src/main/java/com/zify/agent/
+    ├── api/
+    │   ├── {Module}Facade.java
+    │   └── dto/
+    │       ├── XxxDTO.java
+    │       ├── XxxCommand.java
+    │       ├── XxxQuery.java
+    │       └── XxxResult.java
+    ├── domain/
+    │   ├── {Module}Service.java
+    │   ├── executor/
+    │   ├── handler/
+    │   └── validator/
+    ├── infrastructure/
+    │   ├── entity/
+    │   │   └── XxxEntity.java
+    │   ├── mapper/
+    │   │   └── XxxMapper.java
+    │   ├── repository/        # 可选：复杂查询或多 Mapper 编排时才建
+    │   ├── converter/
+    │   │   └── XxxConverter.java
+    │   ├── facade/
+    │   │   └── {Module}FacadeImpl.java
+    │   └── client/
+    │       └── XxxClient.java
+    └── adapter/
+        ├── web/
+        │   ├── {Module}Controller.java
+        │   ├── request/
+        │   │   └── XxxRequest.java
+        │   └── response/
+        │       └── XxxResponse.java
+        └── sse/               # 只有需要 SSE/流式接口的模块才建
+            └── XxxSseController.java
 ```
 
 规则：
@@ -189,7 +195,7 @@ public class ChatService {
 
 - Entity 统一命名为 `XxxEntity`，放在 `infrastructure/entity/`。
 - Mapper 统一命名为 `XxxMapper`，放在 `infrastructure/mapper/`，继承 MyBatis-Plus `BaseMapper<XxxEntity>`。
-- XML Mapper 放在 `src/main/resources/mapper/{module}/XxxMapper.xml`。
+- XML Mapper 放在 `zify-{module}/src/main/resources/mapper/XxxMapper.xml`。
 - 一期默认只创建 Mapper，不创建 Repository。
 - 只有当一个查询需要组合多个 Mapper 或包含复杂查询语义时，才创建 `infrastructure/repository/XxxRepository.java`。
 - Facade 实现统一放在 `infrastructure/facade/`，命名为 `{Module}FacadeImpl`。
@@ -366,7 +372,7 @@ public AgentDTO create(CreateAgentRequest request) {
 
 ## 七、模块间依赖关系
 
-允许的依赖关系如下：
+允许的依赖关系如下（每个子模块还隐式依赖 `zify-common`，表中省略）：
 
 ```text
 model     -> 无
@@ -378,6 +384,8 @@ engine    -> agent, model, tool, knowledge, workflow
 chat      -> agent, engine
 trigger   -> workflow
 ```
+
+以上逻辑依赖通过各子模块 `pom.xml` 中的 `<dependency>` 声明在编译时强制执行。未声明的模块的类不可访问。
 
 说明：
 
@@ -398,24 +406,26 @@ trigger   -> workflow
 
 ## 八、common 模块
 
-`common` 不按四层结构拆分，只按基础设施能力分包：
+`zify-common` 是独立 Maven 子模块，不按四层结构拆分，只按基础设施能力分包：
 
 ```text
-src/main/java/com/zify/common/
-├── config/
-│   ├── DataSourceConfig.java
-│   ├── RedisConfig.java
-│   ├── WebConfig.java
-│   └── MyBatisPlusConfig.java
-├── exception/
-│   ├── BusinessException.java
-│   ├── ErrorCode.java
-│   └── GlobalExceptionHandler.java
-├── web/
-│   ├── R.java
-│   └── PageResult.java
-└── util/
-    └── JsonUtils.java
+zify-common/
+├── pom.xml                    (无业务依赖)
+└── src/main/java/com/zify/common/
+    ├── config/
+    │   ├── DataSourceConfig.java
+    │   ├── RedisConfig.java
+    │   ├── WebConfig.java
+    │   └── MyBatisPlusConfig.java
+    ├── exception/
+    │   ├── BusinessException.java
+    │   ├── ErrorCode.java
+    │   └── GlobalExceptionHandler.java
+    ├── web/
+    │   ├── R.java
+    │   └── PageResult.java
+    └── util/
+        └── JsonUtils.java
 ```
 
 规则：
@@ -432,30 +442,30 @@ src/main/java/com/zify/common/
 
 | 要写的类 | 放置位置 |
 |---|---|
-| Facade 接口 | `{module}/api/{Module}Facade.java` |
-| 跨模块 DTO | `{module}/api/dto/XxxDTO.java` |
-| 跨模块命令对象 | `{module}/api/dto/XxxCommand.java` |
-| 跨模块查询对象 | `{module}/api/dto/XxxQuery.java` |
-| 跨模块结果对象 | `{module}/api/dto/XxxResult.java` |
-| Service | `{module}/domain/XxxService.java` |
-| Executor | `{module}/domain/executor/XxxExecutor.java` |
-| Handler | `{module}/domain/handler/XxxHandler.java` |
-| Validator | `{module}/domain/validator/XxxValidator.java` |
-| Entity | `{module}/infrastructure/entity/XxxEntity.java` |
-| MyBatis-Plus Mapper | `{module}/infrastructure/mapper/XxxMapper.java` |
-| 可选 Repository | `{module}/infrastructure/repository/XxxRepository.java` |
-| Converter | `{module}/infrastructure/converter/XxxConverter.java` |
-| Facade 实现 | `{module}/infrastructure/facade/{Module}FacadeImpl.java` |
-| 外部 API Client | `{module}/infrastructure/client/XxxClient.java` |
-| Controller | `{module}/adapter/web/{Module}Controller.java` |
-| SSE Controller | `{module}/adapter/sse/XxxSseController.java` |
-| HTTP Request | `{module}/adapter/web/request/XxxRequest.java` |
-| HTTP Response | `{module}/adapter/web/response/XxxResponse.java` |
-| XML Mapper | `src/main/resources/mapper/{module}/XxxMapper.xml` |
-| 全局配置 | `common/config/` |
-| 全局异常 | `common/exception/` |
-| 统一响应体 / 分页 | `common/web/` |
-| 全局工具类 | `common/util/` |
+| Facade 接口 | `zify-{module}/src/main/java/com/zify/{module}/api/{Module}Facade.java` |
+| 跨模块 DTO | `zify-{module}/src/main/java/com/zify/{module}/api/dto/XxxDTO.java` |
+| 跨模块命令对象 | `zify-{module}/src/main/java/com/zify/{module}/api/dto/XxxCommand.java` |
+| 跨模块查询对象 | `zify-{module}/src/main/java/com/zify/{module}/api/dto/XxxQuery.java` |
+| 跨模块结果对象 | `zify-{module}/src/main/java/com/zify/{module}/api/dto/XxxResult.java` |
+| Service | `zify-{module}/src/main/java/com/zify/{module}/domain/XxxService.java` |
+| Executor | `zify-{module}/src/main/java/com/zify/{module}/domain/executor/XxxExecutor.java` |
+| Handler | `zify-{module}/src/main/java/com/zify/{module}/domain/handler/XxxHandler.java` |
+| Validator | `zify-{module}/src/main/java/com/zify/{module}/domain/validator/XxxValidator.java` |
+| Entity | `zify-{module}/src/main/java/com/zify/{module}/infrastructure/entity/XxxEntity.java` |
+| MyBatis-Plus Mapper | `zify-{module}/src/main/java/com/zify/{module}/infrastructure/mapper/XxxMapper.java` |
+| 可选 Repository | `zify-{module}/src/main/java/com/zify/{module}/infrastructure/repository/XxxRepository.java` |
+| Converter | `zify-{module}/src/main/java/com/zify/{module}/infrastructure/converter/XxxConverter.java` |
+| Facade 实现 | `zify-{module}/src/main/java/com/zify/{module}/infrastructure/facade/{Module}FacadeImpl.java` |
+| 外部 API Client | `zify-{module}/src/main/java/com/zify/{module}/infrastructure/client/XxxClient.java` |
+| Controller | `zify-{module}/src/main/java/com/zify/{module}/adapter/web/{Module}Controller.java` |
+| SSE Controller | `zify-{module}/src/main/java/com/zify/{module}/adapter/sse/XxxSseController.java` |
+| HTTP Request | `zify-{module}/src/main/java/com/zify/{module}/adapter/web/request/XxxRequest.java` |
+| HTTP Response | `zify-{module}/src/main/java/com/zify/{module}/adapter/web/response/XxxResponse.java` |
+| XML Mapper | `zify-{module}/src/main/resources/mapper/XxxMapper.xml` |
+| 全局配置 | `zify-common/src/main/java/com/zify/common/config/` |
+| 全局异常 | `zify-common/src/main/java/com/zify/common/exception/` |
+| 统一响应体 / 分页 | `zify-common/src/main/java/com/zify/common/web/` |
+| 全局工具类 | `zify-common/src/main/java/com/zify/common/util/` |
 
 ---
 
@@ -464,15 +474,17 @@ src/main/java/com/zify/common/
 AI 新增一个功能时，按以下顺序执行：
 
 1. 判断功能属于哪个业务模块。
-2. 如果需要调用其他模块，先检查“模块间依赖关系”是否允许。
-3. 若允许跨模块调用，只在当前模块 Service 中注入目标模块 Facade。
-4. 先创建或复用当前模块 `api/dto` 中的 Command / Query / DTO / Result。
-5. 创建 Entity 和 Mapper。
-6. 创建 Converter。
-7. 创建 Service，并在 Service 中写业务逻辑和事务。
-8. 创建 FacadeImpl，把 Facade 调用转发到 Service。
-9. 创建 Controller、HTTP Request、HTTP Response。
-10. 确认没有跨模块引用 Service / Mapper / Repository / Entity / Controller。
+2. 如果需要调用其他模块，先检查”模块间依赖关系”是否允许。
+3. **验证当前子模块的 `pom.xml` 是否已声明对目标模块的 Maven 依赖**；未声明则先添加。
+4. 若允许跨模块调用，只在当前模块 Service 中注入目标模块 Facade。
+5. 先创建或复用当前模块 `api/dto` 中的 Command / Query / DTO / Result。
+6. 创建 Entity 和 Mapper。
+7. 创建 Converter。
+8. 创建 Service，并在 Service 中写业务逻辑和事务。
+9. 创建 FacadeImpl，把 Facade 调用转发到 Service。
+10. 创建 Controller、HTTP Request、HTTP Response。
+11. 确认没有跨模块引用 Service / Mapper / Repository / Entity / Controller。
+12. 确认当前子模块 `pom.xml` 的 `<dependency>` 声明与依赖图完全匹配。
 
 ---
 

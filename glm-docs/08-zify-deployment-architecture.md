@@ -9,7 +9,7 @@
 
 一期生产部署采用最小 K8s 架构：
 
-- `zify-server` 单副本 Spring Boot 应用。
+- `zify-server` 单副本 Spring Boot 应用（由 `zify-app` 启动模块聚合所有 Maven 子模块打包）。
 - `zify-nginx` 单副本前端静态资源 + API 反向代理。
 - MySQL 单节点 StatefulSet。
 - PostgreSQL + pgvector 单节点 StatefulSet。
@@ -71,7 +71,7 @@ zify-server -> 外部 LLM API / MCP Server / HTTP 工具
 |---|---|---:|---|---|
 | Ingress | Ingress | 由集群提供 | 否 | 域名、TLS、入口路由 |
 | zify-nginx | Deployment + Service | 1 | 否 | React 静态资源、API 反向代理 |
-| zify-server | Deployment + Service | 1 | 是，上传文件 PVC | Spring Boot 单体应用 |
+| zify-server | Deployment + Service | 1 | 是，上传文件 PVC | Spring Boot 模块化单体（Maven 多模块，由 zify-app 打包） |
 | MySQL | StatefulSet + Service + PVC | 1 | 是 | 业务数据 |
 | PostgreSQL + pgvector | StatefulSet + Service + PVC | 1 | 是 | 文档 chunk 和向量 |
 | Redis | StatefulSet + Service + PVC | 1 | 可持久化 | 缓存、进度、限流 |
@@ -228,7 +228,7 @@ strategy:
 
 使用 `Recreate` 的原因：
 
-- 当前阶段 Quartz 随应用启动，不能同时运行两个实例。
+- 当前阶段 Quartz 随应用启动（配置在 `zify-app` 启动模块），不能同时运行两个实例。
 - 上传文件 PVC 默认按单写方式使用，避免滚动更新时两个 Pod 同时挂载。
 - 50 人内部使用可以接受短暂发布时间窗口。
 
@@ -581,7 +581,9 @@ services:
       - redis_data:/data
 
   zify-server:
-    build: ./zify-server
+    build:
+      context: .
+      dockerfile: Dockerfile    # 项目根目录 Dockerfile：mvn package -> 复制 zify-app/target/*.jar
     ports:
       - "8080:8080"
     environment:

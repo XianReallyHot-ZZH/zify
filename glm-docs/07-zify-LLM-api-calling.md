@@ -38,20 +38,20 @@
 因此模型调用能力属于 `model` 模块的基础能力，其他模块通过 `ModelFacade` 调用。
 
 ```text
-engine / workflow / knowledge
+zify-engine / zify-workflow / zify-knowledge（通过 Maven 依赖 zify-model）
         ↓
-model/api/ModelFacade
+zify-model 子模块内 com.zify.model.api.ModelFacade
         ↓
-model/domain/ModelService
+zify-model 子模块内 com.zify.model.domain.ModelService
         ↓
-model/infrastructure/client/LlmGateway
+zify-model 子模块内 com.zify.model.infrastructure.client.LlmGateway
         ├── OpenAiCompatibleProviderClient  -> OpenAI / DeepSeek / 智谱 / Ollama
         └── AnthropicProviderClient         -> Anthropic
 ```
 
 硬性规则：
 
-- 只有 `model/infrastructure/client/` 可以直接访问外部 LLM API。
+- 只有 `zify-model` 子模块内的 `infrastructure/client/` 可以直接访问外部 LLM API。Maven 编译时边界确保其他子模块无法访问这些类。
 - `engine`、`workflow`、`knowledge` 禁止直接创建 OpenAI / Anthropic / DeepSeek HTTP Client。
 - `engine`、`workflow`、`knowledge` 只能通过 `ModelFacade` 发起模型调用。
 - Provider API Key 只在 `model` 模块内读取和使用，不返回给其他模块。
@@ -83,6 +83,7 @@ spring:
 
 ```java
 @Configuration
+// 位于 zify-model 子模块的 com.zify.model.config 包下
 public class LlmThreadConfig {
 
     @Bean(destroyMethod = "close")
@@ -431,7 +432,7 @@ zify:
 
 ## 七、异常分类
 
-异常统一定义在 `model/infrastructure/client/exception/` 下。
+异常统一定义在 `zify-model` 子模块的 `infrastructure/client/exception/` 下。
 
 ```text
 LlmException

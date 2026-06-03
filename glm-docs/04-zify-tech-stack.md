@@ -17,7 +17,7 @@
 | 层 | 技术 | 版本 | 说明 |
 |----|------|------|------|
 | 语言 | Java | 21 LTS | Virtual Threads 适合 IO 密集的 Agent 调用场景 |
-| 框架 | Spring Boot | 4.0 | 单体应用，模块化组织 |
+| 框架 | Spring Boot | 4.0 | 模块化单体，Maven 多模块组织 |
 | AI 框架 | Spring AI | 2.0.0 | 完整 AI 应用框架：LLM 调用、向量检索、工具调用、原生 OpenAI SDK、MCP 集成 |
 | MCP | MCP Java SDK | - | 连接外部 MCP Server（Spring 团队维护，Spring AI 2.0 内置） |
 | ORM | MyBatis-Plus | 3.5+ | 业务数据（MySQL） |
@@ -67,7 +67,7 @@
 ## 双数据库架构
 
 ```
-Spring Boot 4.0 应用
+Spring Boot 4.0 应用（zify-app 启动模块聚合所有 Maven 子模块）
 ├── MySQL 数据源（MyBatis-Plus）
 │   ├── Agent 配置
 │   ├── 对话记录

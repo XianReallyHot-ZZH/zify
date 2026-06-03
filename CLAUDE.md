@@ -17,15 +17,15 @@ Zify 是模块化单体 AI 应用。一人开发，一期面向 ~50 人内部使
 
 技术栈：
 
-- 后端：单 Spring Boot 应用、单 Maven 工程、Java 21、Spring Boot 4.0、Spring AI 2.0、MyBatis-Plus。
+- 后端：单 Spring Boot 应用、**Maven 多模块工程**、Java 21、Spring Boot 4.0、Spring AI 2.0、MyBatis-Plus。
 - 前端：React 18 + TypeScript + Vite + React Router + React Flow + Zustand + Axios + Ant Design。
 - 数据：MySQL 8.x（业务数据）、PostgreSQL + pgvector（chunk 和 embedding）、Redis 7（短生命周期缓存、进度和限流）。
 - 部署：Docker + K8s，单副本。详见 §8。
 
 架构约束：
 
-- 模块化单体，模块边界清晰。一期不引入微服务、Maven 多模块、消息队列、HPA、数据库高可用或独立 Worker，除非用户明确要求。
-- 跨模块调用必须走目标模块 `api` Facade。禁止注入其他模块的 Service、Mapper、Repository、Entity 或 Controller。详见 §3。
+- Maven 多模块单体，模块边界由编译时依赖强制执行。一期不引入微服务、消息队列、HPA、数据库高可用或独立 Worker，除非用户明确要求。
+- 跨模块调用必须走目标模块 `api` Facade。禁止注入其他模块的 Service、Mapper、Repository、Entity 或 Controller。Maven `<dependency>` 声明必须与依赖图完全匹配。详见 §3。
 - Spring AI 是 AI 框架（LLM 调用、VectorStore、工具、OpenAI 兼容 Provider、MCP 集成）。MCP 一期只做 Client。
 - 文档解析使用 Apache POI、PDFBox，并支持 TXT/Markdown。Cron 触发器使用 Quartz。
 - IO 密集异步任务使用 Java 21 Virtual Threads 和 Spring 管理的 Executor。
@@ -54,29 +54,32 @@ model      Provider 配置、API Key 使用、LLM/Embedding/Rerank 调用
 common     仅放基础设施：配置、异常、统一响应、工具类
 ```
 
-允许的模块依赖：
+允许的模块依赖（每个子模块还隐式依赖 `zify-common`，通过父 POM `<dependencyManagement>` 统一管理版本）：
 
 ```text
-model     -> 无
-tool      -> 无
-knowledge -> model
-workflow  -> model, knowledge, tool
-agent     -> model, tool, knowledge, workflow
-engine    -> agent, model, tool, knowledge, workflow
-chat      -> agent, engine
-trigger   -> workflow
+common    -> 无
+model     -> common
+tool      -> common
+knowledge -> common, model
+workflow  -> common, model, knowledge, tool
+agent     -> common, model, tool, knowledge, workflow
+engine    -> common, agent, model, tool, knowledge, workflow
+chat      -> common, agent, engine
+trigger   -> common, workflow
 ```
 
 功能实现顺序：
 
 1. 判断功能所属模块。如果需要其他模块能力，检查依赖关系是否允许。
-2. 在当前模块 `api/dto` 中新增或复用 Facade DTO。
+2. **验证当前子模块 `pom.xml` 是否已声明对目标模块的 Maven 依赖**；未声明则先添加。
+3. 在当前模块 `api/dto` 中新增或复用 Facade DTO。
 3. 新增 Entity、Mapper、Converter。
 4. 新增 Service 和事务边界。
 5. 新增 FacadeImpl。
 6. 新增 Controller、HTTP Request、HTTP Response。
 7. 如果是用户可见功能，再新增前端 API、类型、页面和组件。
 8. 确认没有引入禁止的跨模块引用。
+9. 确认子模块 `pom.xml` 的 `<dependency>` 声明与依赖图完全匹配。
 
 ---
 
@@ -84,35 +87,39 @@ trigger   -> workflow
 
 ### 目录结构
 
-每个后端业务模块必须使用以下结构：
+每个后端业务模块是一个独立 Maven 子模块（以 `zify-agent` 为例）：
 
 ```text
-src/main/java/com/zify/{module}/
-├── api/
-│   ├── {Module}Facade.java
-│   └── dto/
-├── domain/
-│   ├── {Module}Service.java
-│   ├── executor/
-│   ├── handler/
-│   └── validator/
-├── infrastructure/
-│   ├── entity/
-│   ├── mapper/
-│   ├── repository/        # 可选，仅复杂查询或多 Mapper 编排时创建
-│   ├── converter/
-│   ├── facade/
-│   └── client/
-└── adapter/
-    ├── web/
-    │   ├── request/
-    │   └── response/
-    └── sse/               # 只有需要 SSE/流式接口时创建
+zify-agent/
+├── pom.xml
+└── src/main/java/com/zify/agent/
+    ├── api/
+    │   ├── {Module}Facade.java
+    │   └── dto/
+    ├── domain/
+    │   ├── {Module}Service.java
+    │   ├── executor/
+    │   ├── handler/
+    │   └── validator/
+    ├── infrastructure/
+    │   ├── entity/
+    │   ├── mapper/
+    │   ├── repository/        # 可选，仅复杂查询或多 Mapper 编排时创建
+    │   ├── converter/
+    │   ├── facade/
+    │   └── client/
+    └── adapter/
+        ├── web/
+        │   ├── request/
+        │   └── response/
+        └── sse/               # 只有需要 SSE/流式接口时创建
 ```
+
+启动模块 `zify-app` 聚合所有子模块，包含 `@SpringBootApplication` 主类、配置文件和 Flyway 迁移脚本。
 
 ### 分层与调用规则
 
-- `api`：只放 Facade 接口和跨模块 DTO / Command / Query / Result。
+- `api`：只放 Facade 接口和跨模块 DTO / Command / Query / Result。这是子模块的公共 API，其他子模块通过 Maven 依赖消费。
 - `domain`：业务逻辑、事务边界、本模块持久化编排，以及允许的跨模块 Facade 调用。
 - `infrastructure`：Entity、Mapper、可选 Repository、Converter、FacadeImpl、外部 Client。
 - `adapter`：HTTP / SSE Controller、请求校验、响应转换。
@@ -121,6 +128,7 @@ src/main/java/com/zify/{module}/
 
 - `Controller -> Service`，Controller 只能调用本模块 Service。
 - 跨模块只允许 `Service -> 目标模块 Facade`。
+- **`<dependency>` 声明必须与 §2 依赖图完全匹配**，编译时强制边界。
 - Entity 不能跨模块。Facade 方法不能返回 Entity 或 MyBatis-Plus 分页对象。
 - HTTP Request / Response 不能进入 domain 层。
 - `common` 不能出现业务概念（Agent / Workflow / Knowledge / Tool / Model / Chat / Trigger）。
@@ -151,7 +159,7 @@ src/main/java/com/zify/{module}/
 
 - 捕获你能处理的最具体异常类型，不要捕获 `Exception` / `Throwable`。
 - catch 块不能为空——至少记录 WARN 日志。
-- 项目统一使用 `BusinessException`（`common/exception`）+ 枚举 `ErrorCode`，不传硬编码字符串。Service 抛出，`@RestControllerAdvice` 统一捕获。
+- 项目统一使用 `BusinessException`（`zify-common` 子模块的 `exception` 包）+ 枚举 `ErrorCode`，不传硬编码字符串。Service 抛出，`@RestControllerAdvice` 统一捕获。
 - finally 中禁止 return / continue / break。
 - try-catch 放在循环外层。如果只有单次迭代需要捕获，先判断能否用前置条件替代。
 
@@ -246,7 +254,7 @@ Zustand 和 SSE：
 - PostgreSQL + pgvector：知识库 chunk 和 embedding。编码 `UTF8`。
 - Redis：缓存、进度、限流、临时状态。**Redis 不是最终数据源**，丢失后业务必须可恢复。禁止存 `SseEmitter` 等 Java 对象。
 
-迁移：所有表结构变更必须使用 Flyway 或 Liquibase，禁止手工修改生产表。建表迁移应同时包含必要索引。
+迁移：所有表结构变更必须使用 Flyway，禁止手工修改生产表。迁移脚本集中在 `zify-app/src/main/resources/db/migration/`，按模块前缀命名（如 `V1__agent__create_table.sql`）。建表迁移应同时包含必要索引。
 
 ### MySQL 规则
 
@@ -295,12 +303,12 @@ PRIMARY KEY (`id`)
 所有外部模型调用归口到 `model` 模块。
 
 ```text
-engine / workflow / knowledge -> model/api/ModelFacade -> model/domain/ModelService -> model/infrastructure/client/LlmGateway
+zify-engine / zify-workflow / zify-knowledge -> zify-model 内 ModelFacade -> ModelService -> LlmGateway
 ```
 
 硬性规则：
 
-- 只有 `model/infrastructure/client` 可以直接访问 LLM API。使用 Java 21 Virtual Threads + Spring `RestClient`。
+- 只有 `zify-model` 子模块内的 `infrastructure/client` 可以直接访问 LLM API。使用 Java 21 Virtual Threads + Spring `RestClient`。
 - API Key 只在 `model` 模块内读取和使用，禁止返回给其他模块或前端，禁止记录到日志。
 - Controller 不开线程。SSE 场景下 Controller 只创建 `SseEmitter`，交给 Service。
 - SSE 断开 / 超时 / 发送失败时，必须取消上游 LLM 调用。Provider Client 必须定期检查中断状态。
@@ -346,7 +354,9 @@ Agent：ReAct Agent 绑定模型、工具、知识库。Workflow Agent 绑定一
 
 ## §8 部署与性能
 
-生产拓扑：Ingress（TLS）→ zify-nginx（静态资源 + `/api/**` 代理，SSE 路径关闭 buffering）→ zify-server → MySQL / PostgreSQL+pgvector / Redis / uploads PVC / 外部 LLM。
+生产拓扑：Ingress（TLS）→ zify-nginx（静态资源 + `/api/**` 代理，SSE 路径关闭 buffering）→ zify-server（`zify-app` 启动模块打包）→ MySQL / PostgreSQL+pgvector / Redis / uploads PVC / 外部 LLM。
+
+构建：项目根目录 `mvn package`，Docker 镜像只从 `zify-app/target/` 打包。
 
 核心约束：
 
@@ -375,6 +385,7 @@ LLM Provider 最大并发: 20    Hikari 最大连接池: 20
 后端：
 
 - [ ] 模块归属正确，跨模块依赖在允许列表中。
+- [ ] 子模块 `pom.xml` 的 `<dependency>` 声明与 §2 依赖图完全匹配。
 - [ ] 跨模块调用只走目标 Facade，Controller 只调用本模块 Service。
 - [ ] 没有 Entity / Mapper / Repository / Service 跨模块。
 - [ ] HTTP Request / Response 没有进入 domain 层。
@@ -398,7 +409,7 @@ LLM Provider 最大并发: 20    Hikari 最大连接池: 20
 
 LLM：
 
-- [ ] 调用经过 `ModelFacade`，Provider Client 在 `model/infrastructure/client`。
+- [ ] 调用经过 `ModelFacade`，Provider Client 在 `zify-model` 子模块的 `infrastructure/client`。
 - [ ] 已配置超时、重试、并发保护和取消行为。流式重试只在首 chunk 前。
 - [ ] API Key 不记录、不返回。记录结构化日志。
 
@@ -419,3 +430,25 @@ glm-docs/08-zify-deployment-architecture.md
 glm-docs/09-zify-performance-bottleneck.md
 glm-docs/10-zify-database-spec.md
 ```
+
+---
+
+## 行为指令
+
+### 写代码时
+- 每个功能用最简单直接的方式实现
+- 不引入不必要的设计模式，除非我明确要求
+- 不做过度抽象，不过度工程化
+- 不引入技术栈以外的依赖，需要时先问我
+- 所有外部调用必须有超时设置
+- 配置项外化到 application.yml，不硬编码
+- 异常处理必须使用 ErrorCode 枚举，禁止硬编码错误码和错误信息
+
+### 改代码时
+- 先理解相关模块的设计意图
+- 不要为了新功能破坏已有接口契约
+- 改完确保已有测试通过
+
+### 不确定时
+- 架构选择给我 2-3 个方案对比，我来拍板
+- 规范没覆盖的情况，先问我，不要自己编规矩

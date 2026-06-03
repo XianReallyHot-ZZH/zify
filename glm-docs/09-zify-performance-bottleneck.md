@@ -1,6 +1,6 @@
 # Zify 性能瓶颈预判
 
-> 基于当前部署架构：`zify-server` 单 Pod、MySQL 单节点、PostgreSQL + pgvector 单节点、Redis 单节点、上传文件 PVC、Ingress + Nginx、每日备份 CronJob。
+> 基于当前部署架构：`zify-app` 启动模块聚合打包的 `zify-server` 单 Pod、MySQL 单节点、PostgreSQL + pgvector 单节点、Redis 单节点、上传文件 PVC、Ingress + Nginx、每日备份 CronJob。
 > 目标：50 人内部使用。原则：一期不引入消息队列、多副本、分库分表、复杂监控平台，但必须在编码和部署时避免明显瓶颈。
 
 严重程度 = 发生概率 × 影响范围。
@@ -10,7 +10,7 @@
 ## 一、当前部署前提
 
 ```text
-zify-server:
+zify-server（由 zify-app 启动模块聚合打包）:
   replicas = 1
   requests = 1C2G
   limits   = 2C4G
