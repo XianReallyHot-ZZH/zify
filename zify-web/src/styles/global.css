@@ -1,16 +1,137 @@
+:root {
+  /* ── 主色 ────────────────────────────────────────────── */
+  --color-primary:          #5B5FEF;   /* 靛蓝紫，AI 科技感 */
+  --color-primary-hover:    #4F53E0;
+  --color-primary-active:   #4347D1;
+  --color-primary-light:    #E8E9FC;
+  --color-primary-lighter:  #F3F3FD;
+  --color-primary-bg:       #F7F7FE;   /* 按钮、标签底色 */
+
+  /* ── 背景色阶 ────────────────────────────────────────── */
+  --color-bg-base:          #FFFFFF;
+  --color-bg-subtle:        #F9FAFB;   /* 页面底色 */
+  --color-bg-muted:         #F3F4F6;   /* 卡片、面板底色 */
+  --color-bg-elevated:      #FFFFFF;   /* 弹出层、下拉 */
+  --color-bg-hover:         #ECEEF1;   /* 行 hover */
+  --color-bg-pressed:       #E2E5E9;
+
+  /* ── 文字色阶 ────────────────────────────────────────── */
+  --color-text-primary:     #111827;   /* 标题、正文 */
+  --color-text-secondary:   #4B5563;   /* 描述、辅助 */
+  --color-text-tertiary:    #9CA3AF;   /* 占位符、禁用文字 */
+  --color-text-disabled:    #D1D5DB;
+  --color-text-inverse:     #FFFFFF;   /* 深底白字 */
+
+  /* ── 边框色阶 ────────────────────────────────────────── */
+  --color-border:           #E5E7EB;
+  --color-border-hover:     #D1D5DB;
+  --color-border-active:    var(--color-primary);
+  --color-border-light:     #F3F4F6;
+
+  /* ── 功能色 ──────────────────────────────────────────── */
+  --color-success:          #22C55E;
+  --color-success-light:    #DCFCE7;
+  --color-warning:          #F59E0B;
+  --color-warning-light:    #FEF3C7;
+  --color-error:            #EF4444;
+  --color-error-light:      #FEE2E2;
+  --color-info:             #3B82F6;
+  --color-info-light:       #DBEAFE;
+
+  /* ── 圆角 ────────────────────────────────────────────── */
+  --radius-sm:   4px;       /* 小元素：Tag、Badge */
+  --radius-md:   6px;       /* 输入框、按钮 */
+  --radius-lg:   8px;       /* 卡片 */
+  --radius-xl:   12px;      /* 模态框、面板 */
+  --radius-full: 9999px;    /* 圆形头像、胶囊 */
+
+  /* ── 阴影 ────────────────────────────────────────────── */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+
+  /* ── 过渡动效 ────────────────────────────────────────── */
+  --transition-fast:    150ms ease;
+  --transition-normal:  200ms ease;
+  --transition-slow:    300ms ease;
+
+  /* ── 间距 ────────────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+
+  /* ── 字体 ────────────────────────────────────────────── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ── 字号 ────────────────────────────────────────────── */
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  20px;
+  --text-3xl:  24px;
+
+  /* ── Ant Design 主题覆盖 ─────────────────────────────── */
+  --ant-color-primary:    var(--color-primary);
+}
+
+/* ── 全局基础 ──────────────────────────────────────────── */
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-subtle);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── 侧边栏 Logo ─────────────────────────────────────── */
 .logo {
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  font-weight: bold;
-  color: #1677ff;
-  border-bottom: 1px solid #f0f0f0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: color var(--transition-fast);
+}
+
+/* ── 卡片通用样式 ─────────────────────────────────────── */
+.zify-card {
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ── 页面容器 ─────────────────────────────────────────── */
+.zify-page {
+  padding: var(--space-6);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.zify-page-header {
+  margin-bottom: var(--space-6);
+}
+
+.zify-page-title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1) 0;
+  letter-spacing: -0.01em;
 }
