@@ -100,7 +100,112 @@ PRIMARY KEY (`id`)
 - 禁止用 `0` 表示未知外键。
 - 禁止所有字段无脑 `NOT NULL DEFAULT ''`。
 
-### 2.4 MySQL 建库语句
+### 2.4 字段类型选择指南
+
+#### 整数类型
+
+| 类型 | 范围 | 使用场景 |
+|---|---|---|
+| `TINYINT` | -128 ~ 127 | 布尔标记（0/1）、小范围枚举 |
+| `SMALLINT` | -32768 ~ 32767 | 短列表排序、中等范围枚举 |
+| `INT` | -21亿 ~ 21亿 | 数量、计数、排序值 |
+| `BIGINT` | -922京 ~ 922京 | 仅当 INT 不够时使用 |
+
+规则：
+
+- `is_deleted` 固定用 `TINYINT`，不用 `BOOLEAN`（MySQL `BOOLEAN` 是 `TINYINT(1)` 的别名，无实质区别，但项目统一用 `TINYINT`）。
+- 关联 ID 使用 `CHAR(36)`（UUID），不使用自增整数。
+- 数量字段默认 `INT NOT NULL DEFAULT 0`。如果预期不会超过百万，用 `INT` 即可。
+- 禁止用 `UNSIGNED` 属性，与 Java 类型映射容易出错。
+
+#### 字符串类型
+
+| 类型 | 最大长度 | 使用场景 |
+|---|---|---|
+| `CHAR(36)` | 固定 36 字符 | UUID 主键、关联 ID |
+| `VARCHAR(N)` | 最多 65535 字节 | 名称、描述、状态、URL、配置值 |
+| `TEXT` | 64 KB | 短内容：消息摘要、知识库 chunk 内容 |
+| `MEDIUMTEXT` | 16 MB | 中等内容：较长的 Agent Prompt |
+| `LONGTEXT` | 4 GB | 长内容：完整消息体、工作流 DSL |
+
+VARCHAR 长度建议：
+
+| 场景 | 建议长度 | 说明 |
+|---|---|---|
+| 名称 | `VARCHAR(128)` | Agent / 工具 / 知识库名称 |
+| 描述 | `VARCHAR(512)` | 简短描述 |
+| 状态 | `VARCHAR(32)` | 状态枚举值 |
+| 类型 | `VARCHAR(32)` | 类型枚举值 |
+| URL / Path | `VARCHAR(512)` | API URL、文件路径 |
+| API Key 加密后 | `VARCHAR(512)` | 加密后的密钥 |
+| 配置键值 | `VARCHAR(255)` | 配置名称、模型名称 |
+
+规则：
+
+- VARCHAR 长度按实际业务需要设置，不无脑给 255 或 1024。
+- 超过 512 字符的文本内容优先使用 TEXT 类型。
+- 所有 TEXT / MEDIUMTEXT / LONGTEXT 字段不允许设 DEFAULT 值。
+
+#### 时间类型
+
+| 类型 | 精度 | 范围 | 存储 | 时区 |
+|---|---|---|---|---|
+| `DATETIME(3)` | 毫秒 | 1000-9999 年 | 8 字节 | 不带时区，存什么读什么 |
+| `TIMESTAMP(3)` | 毫秒 | 1970-2038 年 | 4 字节 | 自动转换时区 |
+
+Zify 统一使用 `DATETIME(3)`，不使用 `TIMESTAMP`：
+
+- `TIMESTAMP` 有 2038 年上限问题。
+- `DATETIME` 不受 MySQL 时区设置影响，存 UTC 读 UTC，行为可预测。
+- 应用层统一按 UTC 写入和读取，在展示层转换为用户时区。
+
+规则：
+
+- 所有时间字段精度统一为毫秒：`DATETIME(3)`。
+- 禁止使用 `DATE`、`TIME`、`YEAR` 类型，除非有明确的业务需求（如生日、年度归档）。
+- 禁止用 `VARCHAR` 或整数存时间戳。
+
+#### 精确数值
+
+金额、比例、费率等需要精确计算的字段必须使用 `DECIMAL`：
+
+```sql
+`rate` DECIMAL(10, 6) NOT NULL DEFAULT 0.000000 COMMENT '费率'
+```
+
+规则：
+
+- 禁止用 `FLOAT` / `DOUBLE` 存储金额或需要精确比较的数值。
+- `DECIMAL(P, S)` 中 P 为总位数，S 为小数位数。按业务精度需求设置。
+- Zify 一期没有金额场景，但 Token 用量统计等如果需要精确计算，也应使用 `DECIMAL` 或 `BIGINT`（存最小单位）。
+
+#### JSON 类型
+
+```sql
+`dsl_json` JSON NULL COMMENT '工作流 DSL 定义'
+```
+
+规则：
+
+- JSON 字段用于存储结构灵活的配置数据（工作流 DSL、工具参数定义、节点配置等）。
+- JSON 字段默认允许 `NULL`。需要空对象时由应用写入 `{}`。
+- 禁止在 JSON 字段上直接建普通索引。需要索引 JSON 内部字段时使用 generated column。
+- JSON 字段不做业务外键引用。引用关系用独立的外键字段。
+- 详见 §5.6 JSON 字段使用规范。
+
+### 2.5 表结构设计约束
+
+规则：
+
+- 单表字段数量建议不超过 30 个。超过时考虑拆分（如将大字段拆到扩展表）。
+- 每张表必须写 `COMMENT`，每个字段必须写 `COMMENT`。
+- 表名、字段名禁止使用 MySQL 保留字（如 `order`、`group`、`key`、`index`、`trigger`）。如果业务名称与保留字冲突，加前缀或后缀（如 `trigger_config`、`sort_order`）。
+- 大字段（TEXT / MEDIUMTEXT / LONGTEXT / JSON）超过 2 个时，考虑拆到独立扩展表，避免影响主表查询性能。
+- 禁止在数据库中存储文件二进制内容（BLOB）。文件存 PVC / 对象存储，数据库只存路径和元数据。
+- 禁止在数据库中存储 Java 序列化对象。
+- 同一语义的字段在不同表中必须使用相同的数据类型和长度。例如 `agent_id` 在所有表中都是 `CHAR(36) NOT NULL`。
+
+### 2.6 MySQL 建库语句
 
 ```sql
 CREATE DATABASE zify
@@ -161,6 +266,46 @@ UNIQUE KEY `uk_agent_active_name` (`active_name`)
 
 UNIQUE KEY `uk_model_active_provider_model` (`active_provider_model`)
 ```
+
+### 3.4 关联表设计规范
+
+关联表（如 `agent_tool`、`agent_knowledge`）也需要遵守通用字段规范：
+
+```sql
+CREATE TABLE `agent_tool` (
+    `id`          CHAR(36)     NOT NULL COMMENT '主键',
+    `created_at`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间，UTC',
+    `updated_at`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间，UTC',
+    `is_deleted`  TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+
+    `agent_id`    CHAR(36)     NOT NULL COMMENT 'Agent ID',
+    `tool_id`     CHAR(36)     NOT NULL COMMENT '工具 ID',
+
+    `active_agent_tool` VARCHAR(73)
+        GENERATED ALWAYS AS (
+            CASE WHEN `is_deleted` = 0 THEN CONCAT(`agent_id`, '#', `tool_id`) ELSE NULL END
+        ) STORED COMMENT '未删除关联唯一键辅助列',
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_at_active_agent_tool` (`active_agent_tool`),
+    KEY `idx_at_agent_deleted_created_id`
+        (`agent_id`, `is_deleted`, `created_at` DESC, `id` DESC),
+    KEY `idx_at_tool_deleted_created_id`
+        (`tool_id`, `is_deleted`, `created_at` DESC, `id` DESC)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='Agent 与工具关联';
+```
+
+规则：
+
+- 关联表必须有 `id`、`created_at`、`updated_at`、`is_deleted` 四个通用字段。
+- 关联表不需要 `created_by` / `updated_by`，可通过父对象追溯。
+- 两个关联字段都必须建索引。
+- 未删除数据的唯一约束使用 generated column 拼接两个关联 ID 实现。
+- VARCHAR 拼接长度 = 两个 UUID 长度（36+36）+ 分隔符（1）= 73。
+- 关联表不需要独立的清理策略，随父对象删除而软删除。
 
 ---
 
@@ -225,6 +370,110 @@ KEY `idx_msg_conv_deleted_created_id`
 - 所有关联字段必须建索引。
 - 关联完整性由 Service 层校验。
 - 删除父对象时，子对象通过业务逻辑处理，不依赖数据库级 cascade。
+
+### 4.5 SQL 编写规范
+
+#### INSERT 规则
+
+- INSERT 语句必须显式指定列名，禁止省略列名依赖列顺序。
+- 单次批量 INSERT 不超过 500 行。超过时分批执行，每批之间短暂间隔。
+- 批量 INSERT 的 VALUES 子句中，每组值的列顺序必须与列名列表完全对应。
+
+```sql
+-- 正确
+INSERT INTO `agent` (`id`, `name`, `agent_type`, `status`, `created_at`, `updated_at`, `is_deleted`)
+VALUES (?, ?, ?, ?, ?, ?, 0);
+
+-- 禁止
+INSERT INTO `agent` VALUES (?, ?, ?, ?, ?, ?, 0);
+```
+
+#### UPDATE / DELETE 规则
+
+- UPDATE 和 DELETE 必须有 WHERE 子句。禁止无 WHERE 的全表更新或删除。
+- UPDATE 必须同时更新 `updated_at` 字段（MyBatis-Plus 自动填充可替代）。
+- 大批量 DELETE 必须分批执行（每批 ≤ 1000 条），每批之间 sleep 100-500ms。
+- 禁止在事务外执行大批量 UPDATE 或 DELETE。
+
+```sql
+-- 正确：分批删除
+DELETE FROM trigger_log
+WHERE created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 90 DAY)
+ORDER BY created_at
+LIMIT 1000;
+
+-- 禁止：无 WHERE 条件
+DELETE FROM trigger_log;
+```
+
+#### 查询规则
+
+- 禁止 `SELECT *`，必须显式列出所需字段。
+- 禁止在索引列上使用函数或表达式，会导致索引失效：
+
+```sql
+-- 禁止
+WHERE DATE(created_at) = '2026-06-07'
+WHERE UPPER(name) = 'TEST'
+
+-- 正确
+WHERE created_at >= '2026-06-07 00:00:00.000'
+  AND created_at < '2026-06-08 00:00:00.000'
+WHERE name = 'TEST'
+```
+
+- 禁止隐式类型转换。查询条件值必须与字段类型一致：
+
+```sql
+-- 禁止：VARCHAR 列用整数查询
+WHERE agent_id = 12345
+
+-- 正确
+WHERE agent_id = '12345'
+```
+
+- `IN` 子句中的值不超过 500 个。超过时拆分多次查询或使用临时表。
+- `LIKE` 查询禁止以通配符开头（`%keyword`），会导致索引失效。需要全文搜索时后续单独设计。
+- 避免在 `WHERE` 子句中对不同字段使用 `OR`，优先用 `UNION ALL` 或拆分查询。
+- 多表 JOIN 不超过 3 张表。
+- 禁止使用存储过程、视图、触发器、自定义函数。业务逻辑全部在 Java 应用中实现。
+- 新增查询必须使用 `EXPLAIN` 验证执行计划，确保命中正确索引。
+
+### 4.6 状态字段设计规范
+
+规则：
+
+- 状态字段统一使用 `VARCHAR(32)`，不使用 MySQL `ENUM` 类型。
+
+`ENUM` 的问题：
+
+- 新增枚举值需要 `ALTER TABLE`，对大表风险高。
+- `ENUM` 值在 Java 代码中也需要同步，两边维护成本高。
+- `VARCHAR(32)` 足够存任何状态值，新增状态只需要改代码。
+
+- 状态值使用大写英文，下划线分隔：`ACTIVE`、`INACTIVE`、`DRAFT`、`PUBLISHED`、`RUNNING`、`SUCCEEDED`、`FAILED`、`CANCELLED`、`PENDING`、`PROCESSING`。
+- 每个状态字段必须定义 `NOT NULL DEFAULT '{初始状态}'`。
+- 状态流转由 Java Service 层校验和驱动，数据库不约束状态转换路径。
+
+常用状态字段约定：
+
+| 表 | 字段 | 值域 |
+|---|---|---|
+| `agent` | `status` | `ACTIVE` / `INACTIVE` |
+| `agent` | `agent_type` | `REACT` / `WORKFLOW` |
+| `workflow` | `status` | `DRAFT` / `PUBLISHED` |
+| `tool` | `status` | `ACTIVE` / `INACTIVE` |
+| `tool` | `tool_type` | `MCP` / `HTTP` / `WORKFLOW` |
+| `workflow_run` | `status` | `PENDING` / `RUNNING` / `SUCCEEDED` / `FAILED` / `CANCELLED` |
+| `workflow_node_run` | `status` | `PENDING` / `RUNNING` / `SUCCEEDED` / `FAILED` / `SKIPPED` |
+| `trigger` | `trigger_type` | `WEBHOOK` / `CRON` |
+| `trigger_log` | `status` | `PENDING` / `SUCCEEDED` / `FAILED` |
+| `document` | `parse_status` | `PENDING` / `PROCESSING` / `SUCCEEDED` / `FAILED` |
+| `conversation` | `status` | `ACTIVE` / `ARCHIVED` |
+| `message` | `role` | `USER` / `ASSISTANT` / `SYSTEM` / `TOOL` |
+| `model_provider` | `provider_type` | `OPENAI` / `ANTHROPIC` / `OPENAI_COMPATIBLE` |
+| `model` | `model_type` | `LLM` / `EMBEDDING` / `RERANK` |
+| `model_provider` | `status` | `ACTIVE` / `INACTIVE` |
 
 ---
 
@@ -381,6 +630,97 @@ LIMIT 1000;
 | `workflow_node_run` | 90 天 |
 | `trigger_log` | 90 天 |
 | `document_parse_log` | 30 天 |
+
+### 5.6 JSON 字段使用规范
+
+Zify 多处使用 JSON 字段存储结构灵活的配置数据：
+
+| 表 | JSON 字段 | 用途 |
+|---|---|---|
+| `workflow` | `dsl_json` | 工作流画布定义（节点、连线、位置） |
+| `workflow_node` | `config_json` | 节点配置（LLM Prompt、HTTP 参数、代码片段等） |
+| `tool` | `parameter_schema_json` | 工具参数 JSON Schema 定义 |
+| `tool` | `config_json` | 工具连接配置（HTTP 工具的 URL/Header/Body 模板） |
+| `tool_call_log` | `request_json` | 工具调用请求体 |
+| `tool_call_log` | `response_json` | 工具调用响应体 |
+| `workflow_node_run` | `input_json` | 节点运行输入数据 |
+| `workflow_node_run` | `output_json` | 节点运行输出数据 |
+| `document_chunk` (PG) | `metadata` | 文档 chunk 元数据（来源页码、段落位置等） |
+
+使用规则：
+
+- **JSON 用于配置和日志，不用于核心查询维度**。需要作为查询条件、排序条件、唯一约束的字段，必须拆成独立列。
+- **JSON 字段不参与 WHERE 过滤**。如果需要按 JSON 内部字段过滤，使用 generated column 提取为独立列并建索引。
+- **JSON 列表接口不返回**。列表接口只返回轻量字段，JSON 大字段只在详情接口按主键查询。
+- **JSON 结构由 Java 代码校验**，数据库不约束 JSON 内部结构。Java 中使用对应的 DTO 类做序列化和校验。
+- **JSON 字段允许 NULL**，不设 DEFAULT。需要空对象时由应用写入 `{}` 或 `[]`。
+- **禁止用 JSON 替代正常的表关联**。对象之间的引用关系必须用独立的外键字段 + 索引。
+
+generated column 索引示例（当需要按 JSON 内部字段查询时）：
+
+```sql
+-- 如果需要按 workflow_node 的 node_type 查询
+`node_type_str` VARCHAR(32)
+    GENERATED ALWAYS AS (
+        JSON_UNQUOTE(JSON_EXTRACT(`config_json`, '$.nodeType'))
+    ) STORED COMMENT '节点类型，从 config_json 提取',
+
+KEY `idx_wn_node_type` (`node_type_str`)
+```
+
+### 5.7 事务规范
+
+#### 隔离级别
+
+Zify 使用 MySQL 默认隔离级别 `READ_COMMITTED`：
+
+```yaml
+# application.yml
+spring:
+  datasource:
+    hikari:
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+```
+
+理由：
+
+- `READ_COMMITTED` 避免 `REPEATABLE_READ` 下的间隙锁范围过大问题。
+- Zify 单副本部署，并发冲突概率低，`READ_COMMITTED` 足够。
+- 配合乐观锁（版本号或 `updated_at` CAS）处理并发更新。
+
+#### 事务范围规则
+
+- **事务只包住数据库读写操作，不包住外部调用**。禁止在事务内调用 LLM、Embedding、MCP、HTTP 工具或其他慢外部 API。
+- 事务方法尽量短，从获取连接到释放连接的耗时控制在 200ms 以内。
+- 读操作不需要显式事务（`@Transactional(readOnly = true)` 可用于标记但非必须）。
+- 写操作事务放在 Service 的 public 方法上，Controller 不开事务。
+
+```java
+// 正确：事务只包住数据库操作
+@Transactional
+public void createAgent(CreateAgentCommand command) {
+    // 1. 校验 → 调用其他模块 Facade（无事务外部调用）
+    validate(command);
+    // 2. 写库 → 事务内
+    agentMapper.insert(entity);
+    // 3. 写关联 → 事务内
+    batchInsertAgentTools(agentId, command.getToolIds());
+}
+
+// 错误：事务包住了 LLM 调用
+@Transactional
+public void runAgent(String agentId) {
+    AgentEntity agent = agentMapper.selectById(agentId);
+    String response = modelFacade.chat(agent.getPrompt()); // 禁止：LLM 调用在事务内
+    messageMapper.insert(responseEntity);
+}
+```
+
+#### 大事务监控
+
+- 一期通过 Hikari 连接池指标监控事务耗时。
+- 事务持续时间超过 1 秒记录 WARN 日志。
+- Hikari `connection-timeout` 设为 2 秒，获取连接超时时立即告警。
 
 ---
 
@@ -659,21 +999,121 @@ CREATE TABLE `agent` (
 
 ---
 
-## 九、AI 建表检查清单
+## 九、MySQL 实例配置建议
+
+一期单节点部署，以下为关键参数建议值，实际按监控调整。
+
+### 连接池（应用侧 Hikari）
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 2000
+      validation-timeout: 1000
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+```
+
+### MySQL 关键参数
+
+```ini
+# InnoDB 缓冲池：建议占物理内存 60-70%，但需与 zify-server 共存
+# 8C16G 节点上 MySQL 独占时设 8G；与其他组件共存时适当调小
+innodb_buffer_pool_size = 4G
+
+# 每个事务的日志缓冲
+innodb_log_buffer_size = 16M
+
+# 连接数：应用连接池 20 + 预留监控和运维
+max_connections = 100
+
+# 慢查询监控
+slow_query_log = ON
+long_query_time = 0.5
+
+# 字符集（建库时已指定，实例级也建议统一）
+character_set_server = utf8mb4
+collation_server = utf8mb4_0900_ai_ci
+
+# binlog 用于备份恢复
+log_bin = ON
+binlog_format = ROW
+binlog_retention_hours = 168
+```
+
+规则：
+
+- `innodb_buffer_pool_size` 不超过物理内存的 70%，且需预留 OS 和其他进程内存。
+- `slow_query_log` 必须开启，阈值默认 500ms。定期分析慢查询并优化。
+- `max_connections` 必须大于应用连接池 `maximum-pool-size`，预留运维连接。
+- 一期不需要主从复制，但 `log_bin` 开启以支持增量备份和回滚。
+
+---
+
+## 十、AI 建表检查清单
 
 AI 每次新增表时必须检查：
 
-- 是否属于 MySQL 业务表，还是 PostgreSQL pgvector 表。
-- MySQL 业务表是否包含 `id/created_at/updated_at/is_deleted`。
-- 用户创建的资源表是否包含 `created_by/updated_by`。
-- 是否错误使用 `VARCHAR(36)` 作为 MySQL 主键。
-- 是否错误使用 `UNIQUE(field, is_deleted)`。
-- 所有关联 ID 是否建索引。
-- 大表是否有 Keyset 分页索引。
-- 大表是否有单列 `created_at` 清理索引。
-- 列表接口需要的字段是否能被轻量查询返回。
-- 大字段是否避免进入列表查询。
-- 是否存在 `SELECT *` 依赖。
-- pgvector 表是否使用 PostgreSQL `UTF8`、`TIMESTAMPTZ`、`JSONB`。
-- pgvector 检索是否禁止返回 `embedding`。
-- 是否禁止日常导入时 DROP HNSW 索引。
+**通用字段与类型**
+
+- [ ] 是否属于 MySQL 业务表，还是 PostgreSQL pgvector 表。
+- [ ] MySQL 业务表是否包含 `id/created_at/updated_at/is_deleted`。
+- [ ] 用户创建的资源表是否包含 `created_by/updated_by`。
+- [ ] 是否错误使用 `VARCHAR(36)` 作为 MySQL 主键（应为 `CHAR(36)`）。
+- [ ] 整数字段是否使用了 `UNSIGNED`（禁止）。
+- [ ] 时间字段是否使用 `DATETIME(3)` 而非 `TIMESTAMP` 或 `VARCHAR`。
+- [ ] 金额或精确数值是否使用 `DECIMAL` 而非 `FLOAT` / `DOUBLE`。
+- [ ] 状态字段是否使用 `VARCHAR(32)` 而非 `ENUM`。
+- [ ] 每个字段是否都有 `COMMENT`。
+- [ ] 同一语义字段在不同表中是否类型和长度一致。
+
+**唯一约束与关联**
+
+- [ ] 是否错误使用 `UNIQUE(field, is_deleted)`（应使用 generated column）。
+- [ ] 关联表是否包含通用字段并有 generated column 唯一约束。
+- [ ] 所有关联 ID 是否建索引。
+
+**索引设计**
+
+- [ ] 大表是否有 Keyset 分页索引。
+- [ ] 大表是否有单列 `created_at` 清理索引。
+- [ ] 联合索引字段顺序是否遵循：等值字段 → `is_deleted` → 范围字段 → `id`。
+- [ ] 是否存在冗余索引或超过 8 个索引。
+- [ ] 是否在 JSON / 大 TEXT 字段上建了普通索引（禁止）。
+
+**查询设计**
+
+- [ ] 列表接口是否只返回轻量字段。
+- [ ] 大字段是否避免进入列表查询。
+- [ ] 是否存在 `SELECT *` 依赖。
+- [ ] 新增查询是否用 `EXPLAIN` 验证过执行计划。
+- [ ] INSERT 是否显式指定了列名。
+- [ ] WHERE 条件中的值类型是否与字段类型一致（避免隐式转换）。
+
+**JSON 字段**
+
+- [ ] JSON 字段是否只用于配置和日志，不用于核心查询维度。
+- [ ] 需要 JSON 内部字段查询时是否使用了 generated column。
+- [ ] JSON 字段是否不在列表接口中返回。
+
+**事务**
+
+- [ ] 事务内是否包含外部 API 调用（禁止）。
+- [ ] 事务是否尽量短（目标 < 200ms）。
+
+**PostgreSQL / pgvector**
+
+- [ ] pgvector 表是否使用 PostgreSQL `UTF8`、`TIMESTAMPTZ`、`JSONB`。
+- [ ] pgvector 检索是否禁止返回 `embedding`。
+- [ ] pgvector 检索是否带 `knowledge_id` 过滤。
+- [ ] 是否禁止日常导入时 DROP HNSW 索引。
+
+**表结构**
+
+- [ ] 单表字段是否超过 30 个（超过需说明理由或拆表）。
+- [ ] 大字段（TEXT/MEDIUMTEXT/LONGTEXT/JSON）是否超过 2 个（超过考虑拆扩展表）。
+- [ ] 表名和字段名是否使用了 MySQL 保留字（禁止）。
