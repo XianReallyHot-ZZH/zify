@@ -1,3 +1,3 @@
-import request from './request'
+import { apiGet } from './request'
 
-export const getHealth = () => request.get<never, string>('/api/health')
+export const getHealth = () => apiGet<string>('/health')
