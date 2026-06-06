@@ -6,7 +6,6 @@ package com.zify.common.exception;
 public enum ErrorCode {
 
     // ── 通用 4xx ──────────────────────────────────────────
-    BAD_REQUEST(400, "请求参数错误"),
     PARAM_ERROR(400, "请求参数错误"),
     UNAUTHORIZED(401, "未认证"),
     FORBIDDEN(403, "无权限"),
