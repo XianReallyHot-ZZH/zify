@@ -135,3 +135,40 @@ body {
   margin: 0 0 var(--space-1) 0;
   letter-spacing: -0.01em;
 }
+
+/* ── Card 组件 ────────────────────────────────────────── */
+.zify-card {
+  padding: var(--space-6);
+}
+
+.zify-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.zify-card-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.zify-card-desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+.zify-card-body {
+  min-height: 0;
+}
+
+/* ── Empty 空状态 ─────────────────────────────────────── */
+.zify-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10) 0;
+}
