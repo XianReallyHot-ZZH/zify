@@ -1,7 +1,5 @@
 package com.zify.common.util;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -11,10 +9,8 @@ import java.util.concurrent.TimeUnit;
  * Redis 工具类
  * <p>
  * 封装常用的 get / set / delete / expire 操作。
- * 仅在 Redis 连接可用时注册为 Bean。
  */
 @Component
-@ConditionalOnBean(RedisConnectionFactory.class)
 public class RedisUtil {
 
     private final RedisTemplate<String, Object> redisTemplate;
