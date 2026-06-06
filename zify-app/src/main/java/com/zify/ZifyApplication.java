@@ -3,6 +3,7 @@ package com.zify;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceInitializationAutoConfiguration;
 
@@ -12,7 +13,8 @@ import org.springframework.boot.jdbc.autoconfigure.DataSourceInitializationAutoC
 @SpringBootApplication(exclude = {
         DataSourceAutoConfiguration.class,
         DataSourceInitializationAutoConfiguration.class,
-        MybatisPlusAutoConfiguration.class
+        MybatisPlusAutoConfiguration.class,
+        DataRedisAutoConfiguration.class
 })
 public class ZifyApplication {
 
