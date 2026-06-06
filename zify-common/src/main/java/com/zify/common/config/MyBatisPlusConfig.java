@@ -37,7 +37,7 @@ public class MyBatisPlusConfig {
     }
 
     /**
-     * createdAt / updatedAt 自动填充实现
+     * createdAt / updatedAt / deleted 自动填充实现
      */
     static class AutoFillMetaObjectHandler implements MetaObjectHandler {
 
@@ -45,6 +45,7 @@ public class MyBatisPlusConfig {
         public void insertFill(MetaObject metaObject) {
             this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, LocalDateTime.now());
             this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
+            this.strictInsertFill(metaObject, "deleted", Integer.class, 0);
         }
 
         @Override
