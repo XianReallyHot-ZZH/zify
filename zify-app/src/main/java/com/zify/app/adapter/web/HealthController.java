@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping("/health")
-    public Result<Void> health() {
-        return Result.ok();
+    public Result<String> health() {
+        return Result.ok("Zify is running");
     }
 }

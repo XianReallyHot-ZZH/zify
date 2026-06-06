@@ -85,23 +85,22 @@ curl http://localhost:8080/api/v1/health
 ### 第一步：React 工程骨架
 
 初始化 Zify 前端项目 zify-web。
-技术栈：Vue 3 + TypeScript + Vite + Element Plus。
+技术栈：React 18 + TypeScript + Vite + React Router + React Flow + Zustand + Axios + Ant Design。
 Vite 代理：/api 请求转发到 localhost:8080。
 目录结构按 CLAUDE.md 中定义的前端结构来。
 
 ### 第二步：axios 统一请求层
 
-在 zify-web/src/utils/ 下创建 request.ts，封装 axios 实例。
-baseURL 设为 /api。
-响应拦截器：code === 200 直接返回 data 字段（自动解包），
-非 200 用 ElMessage.error 提示 message 并 reject。
-导出 get、post、put、del 四个方法。
+使用 React 18 + TypeScript + Vite + Axios 封装前端请求工具。在 src/api/request.ts 中创建 Axios 实例，统一配置 baseURL: '/api' 和超时时间。
+基于 types/api.ts 中的 ApiResponse<T> 类型封装 apiGet、apiPost、apiPut、apiDelete 方法，成功请求统一返回 response.data.data，让业务代码无需手动解包。
+具体业务接口放在 api/{module}Api.ts 中，页面、组件和 Zustand Store 不直接调用 Axios，Store 只保存状态和 action，不发 HTTP 请求
 
 ### 第三步：路由、页面空壳、前后端联通
 
-配置 Vue Router，创建三个路由和对应空壳页面：
-模型管理（/providers）、Agent 管理（/agents）、对话（/chat）。
-App.vue：左侧 Element Plus 菜单栏，右侧 router-view。
+使用 React 18 + TypeScript + Vite + React Router + Ant Design 搭建前端基础页面骨架。
+路由统一配置在 src/app/router.tsx，业务页面统一挂载到 MainLayout 下。
+创建模型管理 /models、Agent 管理 /agents、对话默认页 / 对应的空壳页面，分别放在 pages/models/ModelPage.tsx、pages/agents/AgentListPage.tsx、pages/chat/ChatPage.tsx。
+在 src/app/layouts/MainLayout.tsx 中使用 Ant Design 的 Layout 和 Menu 实现左侧导航，右侧通过 React Router 的 <Outlet /> 渲染当前页面内容。
 
 
 ## 场景五：UI 设计与基础组件封装
@@ -112,9 +111,8 @@ App.vue：左侧 Element Plus 菜单栏，右侧 router-view。
 
 Zify 是一个 AI Agent 开发平台，面向技术团队内部使用，用户是开发者。
 管理后台为主——大量表格、表单、配置页，加一个对话页。
-风格：浅底 + 科技感点缀。主色蓝紫系，辅色青色，
-侧边栏深色底，按钮和关键元素用亮色。
-参考 Linear、Supabase 的视觉风格——干净但不无聊。
+风格：浅底 + 科技感点缀。
+调研 Linear、Supabase 的视觉风格.
 帮我设计一套 CSS 变量设计系统：主色/背景色阶/文字色阶/圆角/阴影/过渡动效。
 
 ### 第二步：侧边栏改造演示
@@ -124,16 +122,11 @@ Zify 品牌名的渐变文字效果
 
 ### 第三步：前端基础组件一条指令生成
 
-在 zify-web 中创建以下前端公共组件（src/components/）：
-1. HifyTable.vue：通用列表表格，props 接收 columns 配置和 api 方法，
-   内部管理 loading 和分页，暴露 refresh() 方法。
-2. HifyFormDialog.vue：通用表单弹窗，v-model 控制显示，
-   open(data?) 方法区分新增/编辑模式，提交触发 submit 事件。
-3. useConfirm.ts：删除确认 composable，接收确认文案和 API 方法，
-   一行代码完成确认→调接口→成功提示。
-4. useRequest.ts：请求状态管理，返回 { data, loading, error, execute }。
-5. notify.ts：统一通知封装，notifySuccess/notifyError/notifyWarning。
-   所有组件 Vue 3 Composition API + TypeScript，泛型支持不同数据类型。
+在 zify-web 中按需创建前端共享 UI 和 Hooks。
+展示型公共组件放在 src/shared/ui/，例如通用表格壳、通用空状态、通用弹窗结构；
+无业务 Hook 放在 src/shared/hooks/，例如 useConfirm、useRequest。
+业务 API 调用统一写在 src/api/{module}Api.ts，页面或 features/*/hooks/ 负责组合请求、loading、分页、确认删除和通知提示。
+公共组件不直接依赖业务 API、Zustand Store 或业务类型。
 
 ### 第四步：UI 打磨来回调的演示
 
