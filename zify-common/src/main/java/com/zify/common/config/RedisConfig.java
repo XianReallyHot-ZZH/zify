@@ -53,10 +53,17 @@ public class RedisConfig {
     private ObjectMapper buildObjectMapper() {
         BasicPolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
                 .allowIfBaseType(Object.class)
+                .allowIfBaseType("com.zify.")      // 允许 zify 项目下的类
+                .allowIfBaseType("java.util.")     // 允许常用集合
+                .allowIfSubType(Number.class)      // 允许数字类型
+                .allowIfBaseType("java.time.")     // 允许时间类型 ⭐
                 .build();
 
         return JsonMapper.builder()
-                .activateDefaultTyping(ptv, DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY)
+                .activateDefaultTyping(
+                        ptv,
+                        DefaultTyping.NON_FINAL,
+                        JsonTypeInfo.As.PROPERTY)
                 .build();
     }
 }
