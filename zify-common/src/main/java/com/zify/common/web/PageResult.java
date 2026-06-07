@@ -1,34 +1,44 @@
 package com.zify.common.web;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
- * 分页响应体
+ * 分页结果。
  *
  * @param <T> 单条记录类型
  */
-public class PageResult<T> extends Result<List<T>> {
+public class PageResult<T> {
 
-    private final long total;
-    private final int page;
-    private final int size;
+    private final List<T> records;
+    private final Long total;
+    private final Integer page;
+    private final Integer pageSize;
 
-    public PageResult(List<T> data, long total, int page, int size) {
-        super(200, "success", data);
-        this.total = total;
-        this.page = page;
-        this.size = size;
+    public PageResult(List<T> records, Long total, Integer page, Integer pageSize) {
+        this.records = records == null ? Collections.emptyList() : records;
+        this.total = total == null ? 0L : total;
+        this.page = page == null ? PageRequest.DEFAULT_PAGE : page;
+        this.pageSize = pageSize == null ? PageRequest.DEFAULT_PAGE_SIZE : pageSize;
     }
 
-    public long getTotal() {
+    public static <T> PageResult<T> of(List<T> records, Long total, Integer page, Integer pageSize) {
+        return new PageResult<>(records, total, page, pageSize);
+    }
+
+    public List<T> getRecords() {
+        return records;
+    }
+
+    public Long getTotal() {
         return total;
     }
 
-    public int getPage() {
+    public Integer getPage() {
         return page;
     }
 
-    public int getSize() {
-        return size;
+    public Integer getPageSize() {
+        return pageSize;
     }
 }
