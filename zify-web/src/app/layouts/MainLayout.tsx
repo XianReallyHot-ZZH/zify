@@ -23,7 +23,6 @@ const menuItems = [
 
 // 一级路径 -> 面包屑显示名
 const breadcrumbNameMap: Record<string, string> = {
-  '/': '对话',
   '/agents': 'Agents',
   '/workflows': '工作流',
   '/knowledge': '知识库',
@@ -46,10 +45,12 @@ const MainLayout = () => {
 
   // 面包屑：根据当前路径生成
   const breadcrumbItems = (() => {
-    if (location.pathname === '/') return [{ title: <span>{breadcrumbNameMap['/']}</span> }]
+    const homeItem = { title: <span style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>首页</span> }
+
+    if (location.pathname === '/') return [{ title: <span>首页</span> }]
 
     const segments = location.pathname.split('/').filter(Boolean)
-    const items: { title: React.ReactNode }[] = [{ title: <span>{breadcrumbNameMap['/']}</span> }]
+    const items: { title: React.ReactNode }[] = [homeItem]
 
     for (let i = 0; i < segments.length; i++) {
       const isLast = i === segments.length - 1
