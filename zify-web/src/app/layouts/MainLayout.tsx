@@ -43,8 +43,10 @@ const MainLayout = () => {
       <Sider width={200} theme="light">
         <div className="logo">
           <img src="/favicon.svg" alt="Zify" className="logo-icon" />
-          <span className="logo-brand">Zify</span>
-          <span className="logo-subtitle">AI Agent Platform</span>
+          <div className="logo-text">
+            <span className="logo-brand">Zify</span>
+            <span className="logo-subtitle">AI Agent Platform</span>
+          </div>
         </div>
         <Menu
           mode="inline"

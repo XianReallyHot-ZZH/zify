@@ -98,17 +98,23 @@ body {
 /* ── 侧边栏 Logo ─────────────────────────────────────── */
 .logo {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border-light);
 }
 
 .logo-icon {
-  width: 28px;
-  height: 28px;
-  margin-bottom: 4px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--space-2);
+  min-width: 0;
 }
 
 .logo-brand {
