@@ -1,15 +1,23 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
+import {
+  MessageOutlined,
+  RobotOutlined,
+  ApartmentOutlined,
+  BookOutlined,
+  ToolOutlined,
+  CloudServerOutlined,
+} from '@ant-design/icons'
 
 const { Sider, Content } = Layout
 
 const menuItems = [
-  { key: '/', label: '对话' },
-  { key: '/agents', label: 'Agents' },
-  { key: '/workflows', label: '工作流' },
-  { key: '/knowledge', label: '知识库' },
-  { key: '/tools', label: '工具' },
-  { key: '/models', label: '模型管理' },
+  { key: '/', label: '对话', icon: <MessageOutlined /> },
+  { key: '/agents', label: 'Agents', icon: <RobotOutlined /> },
+  { key: '/workflows', label: '工作流', icon: <ApartmentOutlined /> },
+  { key: '/knowledge', label: '知识库', icon: <BookOutlined /> },
+  { key: '/tools', label: '工具', icon: <ToolOutlined /> },
+  { key: '/models', label: '模型管理', icon: <CloudServerOutlined /> },
 ]
 
 // 从 pathname 提取一级路径用于菜单高亮
