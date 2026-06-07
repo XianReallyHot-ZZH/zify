@@ -41,7 +41,10 @@ const MainLayout = () => {
   return (
     <Layout style={{ height: '100vh' }}>
       <Sider width={200} theme="light">
-        <div className="logo">Zify</div>
+        <div className="logo">
+          <span className="logo-brand">Zify</span>
+          <span className="logo-subtitle">AI Agent Platform</span>
+        </div>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}

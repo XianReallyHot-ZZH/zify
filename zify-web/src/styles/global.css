@@ -97,16 +97,30 @@ body {
 
 /* ── 侧边栏 Logo ─────────────────────────────────────── */
 .logo {
-  height: 48px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--color-primary);
-  letter-spacing: -0.02em;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border-light);
-  transition: color var(--transition-fast);
+}
+
+.logo-brand {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--color-primary), #8B5CF6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
+.logo-subtitle {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
 }
 
 /* ── 卡片通用样式 ─────────────────────────────────────── */
