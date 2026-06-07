@@ -1,9 +1,9 @@
+import { PageHeader } from '../../shared/ui'
+
 const AgentListPage = () => {
   return (
     <div className="zify-page">
-      <div className="zify-page-header">
-        <h1 className="zify-page-title">Agent 管理</h1>
-      </div>
+      <PageHeader title="Agent 管理" description="创建和管理你的 AI Agent" />
     </div>
   )
 }
