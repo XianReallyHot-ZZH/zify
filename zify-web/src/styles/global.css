@@ -105,6 +105,12 @@ body {
   border-bottom: 1px solid var(--color-border-light);
 }
 
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 4px;
+}
+
 .logo-brand {
   font-size: var(--text-3xl);
   font-weight: 700;

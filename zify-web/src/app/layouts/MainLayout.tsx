@@ -42,6 +42,7 @@ const MainLayout = () => {
     <Layout style={{ height: '100vh' }}>
       <Sider width={200} theme="light">
         <div className="logo">
+          <img src="/favicon.svg" alt="Zify" className="logo-icon" />
           <span className="logo-brand">Zify</span>
           <span className="logo-subtitle">AI Agent Platform</span>
         </div>
