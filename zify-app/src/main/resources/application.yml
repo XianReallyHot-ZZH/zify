@@ -31,6 +31,9 @@ zify:
     provider-defaults:
       max-concurrent: 20
       acquire-timeout: 2s
+  external-call:
+    connect-timeout: 10s
+    read-timeout: 60s
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
