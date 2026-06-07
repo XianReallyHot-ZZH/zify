@@ -17,10 +17,12 @@ export type ApiErrorResponse = {
 
 /**
  * Keyset 分页请求参数（大表：message、workflow_run、tool_call_log、trigger_log 等）
+ *
+ * cursor 为 opaque token，由后端 CursorPageResponse.nextCursor 返回，
+ * 前端不需要解码，直接透传即可。
  */
 export type CursorPageQuery = {
-  cursorCreatedAt?: string
-  cursorId?: string
+  cursor?: string
   limit?: number
 }
 
