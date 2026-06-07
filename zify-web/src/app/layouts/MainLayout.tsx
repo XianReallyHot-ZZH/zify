@@ -13,7 +13,7 @@ import {
 const { Sider, Content, Header } = Layout
 
 const menuItems = [
-  { key: '/', label: '对话', icon: <MessageOutlined /> },
+  { key: '/chat', label: '对话', icon: <MessageOutlined /> },
   { key: '/agents', label: 'Agents', icon: <RobotOutlined /> },
   { key: '/workflows', label: '工作流', icon: <ApartmentOutlined /> },
   { key: '/knowledge', label: '知识库', icon: <BookOutlined /> },
@@ -23,6 +23,7 @@ const menuItems = [
 
 // 一级路径 -> 面包屑显示名
 const breadcrumbNameMap: Record<string, string> = {
+  '/chat': '对话',
   '/agents': 'Agents',
   '/workflows': '工作流',
   '/knowledge': '知识库',
@@ -32,9 +33,9 @@ const breadcrumbNameMap: Record<string, string> = {
 
 // 从 pathname 提取一级路径用于菜单高亮
 function getActiveMenuKey(pathname: string): string {
-  if (pathname === '/') return '/'
+  if (pathname === '/') return ''
   const segments = pathname.split('/').filter(Boolean)
-  return segments.length > 0 ? `/${segments[0]}` : '/'
+  return segments.length > 0 ? `/${segments[0]}` : ''
 }
 
 const MainLayout = () => {
