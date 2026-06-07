@@ -12,9 +12,23 @@ const menuItems = [
   { key: '/models', label: '模型管理' },
 ]
 
+// 从 pathname 提取一级路径用于菜单高亮
+// "/" -> "/"
+// "/agents" -> "/agents"
+// "/agents/create" -> "/agents"
+// "/agents/abc/edit" -> "/agents"
+// "/workflows/123" -> "/workflows"
+function getActiveMenuKey(pathname: string): string {
+  if (pathname === '/') return '/'
+  const segments = pathname.split('/').filter(Boolean)
+  return segments.length > 0 ? `/${segments[0]}` : '/'
+}
+
 const MainLayout = () => {
   const navigate = useNavigate()
   const location = useLocation()
+
+  const selectedKey = getActiveMenuKey(location.pathname)
 
   return (
     <Layout style={{ height: '100vh' }}>
@@ -22,7 +36,7 @@ const MainLayout = () => {
         <div className="logo">Zify</div>
         <Menu
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
