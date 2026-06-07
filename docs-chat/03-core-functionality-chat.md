@@ -31,8 +31,13 @@ Zify 项目工程骨架已经搭好（Maven 多模块、zify-common 的 Result /
 需要考虑：多种供应商认证方式的差异怎么统一存储、一个供应商下有多个模型怎么管理。
 
 ### 功能文档
-基于上面的分析，产出
+基于上面的分析，产出一份详细的模型管理模块的功能文档，放置到 @docs-prd\model-manager 路径下。
 
+### 任务提示词
+根据 @docs-prd\model-manager 路径下的文档，生成一份用于开发落地模型管理模块的提示词文档，覆盖前后端的所有功能，要求具体到 AI 能直接执行，不要模糊的描述。文档放置到 @docs-prompt\ 路径下。
+
+### 执行
+根据 @docs-prompt\prompt-03-model-manager.md 文档, 开始执行任务 1 , 任务完成无误后进行 commit
 
 
 
