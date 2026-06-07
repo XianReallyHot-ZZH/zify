@@ -142,6 +142,14 @@ ProviderList 的表格行高太高，改成 52px。
 2. 新增按钮加 Plus 图标
 3. 操作列改成 text 类型按钮：编辑蓝色、删除红色
 
+## 场景六：项目脚本
+
+写一个 start 脚本，放在项目根目录。功能：检查 MySQL 和 Redis 是否可用，构建后端并后台启动，轮询等待后端健康检查通过，启动前端开发服务器。加上错误处理：任何一步失败就停止并提示。
+
+写一个 stop 脚本，优雅停止后端和前端进程。按 PID 文件找进程，先 SIGTERM 再等待，超时 SIGKILL。
+
+写一个 Makefile，包含以下 target：make start（启动）、make stop（停止）、make restart（重启）、make build（构建后端  +  前端）、make clean（清理构建产物）、make package（打包成可分发的  tar.gz）。
+
 
 
 
