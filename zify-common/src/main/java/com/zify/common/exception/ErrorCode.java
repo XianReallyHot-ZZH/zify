@@ -5,6 +5,9 @@ package com.zify.common.exception;
  */
 public enum ErrorCode {
 
+    // ── 成功 ─────────────────────────────────────────────────
+    SUCCESS(200, "success"),
+
     // ── 通用 4xx ──────────────────────────────────────────
     PARAM_ERROR(400, "请求参数错误"),
     UNAUTHORIZED(401, "未认证"),
@@ -12,6 +15,7 @@ public enum ErrorCode {
     NOT_FOUND(404, "资源不存在"),
     METHOD_NOT_ALLOWED(405, "请求方法不允许"),
     CONFLICT(409, "资源冲突"),
+    JSON_PARSE_ERROR(4001, "JSON 解析失败"),
 
     // ── 业务 ──────────────────────────────────────────────
     AGENT_NOT_FOUND(1001, "Agent 不存在"),
@@ -21,7 +25,8 @@ public enum ErrorCode {
     TOOL_NOT_FOUND(1401, "工具不存在"),
 
     // ── 通用 5xx ──────────────────────────────────────────
-    INTERNAL_ERROR(500, "服务器内部错误");
+    INTERNAL_ERROR(500, "服务器内部错误"),
+    EXTERNAL_CALL_FAILED(5001, "外部调用失败");
 
     private final int code;
     private final String message;
