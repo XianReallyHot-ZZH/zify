@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react'
-import { Modal } from 'antd'
 
 interface ConfirmOptions {
   title: string

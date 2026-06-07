@@ -7,11 +7,13 @@ const client = axios.create({
 })
 
 // 响应拦截：解包 ApiResponse<T>，业务层直接拿到 data
+// 返回值类型由 apiGet/apiPost 等函数的泛型参数控制，此处使用 any 兼容 Axios 拦截器类型
 client.interceptors.response.use(
   (response) => {
     const body = response.data as ApiResponse<unknown>
     if (body.code === 200) {
-      return body.data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return body.data as any
     }
     return Promise.reject(new Error(body.message || '请求失败'))
   },
