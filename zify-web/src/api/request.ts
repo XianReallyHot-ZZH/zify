@@ -1,6 +1,19 @@
 import axios from 'axios'
 import type { ApiResponse } from '../types/api'
 
+/**
+ * 业务错误，携带后端返回的错误码
+ */
+export class ApiError extends Error {
+  readonly code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
 const client = axios.create({
   baseURL: '/api',
   timeout: 10000,
@@ -15,10 +28,20 @@ client.interceptors.response.use(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return body.data as any
     }
-    return Promise.reject(new Error(body.message || '请求失败'))
+    // 后端返回业务错误，使用 ApiError 传递 code
+    return Promise.reject(new ApiError(String(body.code), body.message || '请求失败'))
   },
   (error) => {
-    return Promise.reject(error)
+    // 网络/超时/服务端 5xx 等非业务错误
+    if (error.response) {
+      const status = error.response.status
+      const message = error.response.statusText || '服务器错误'
+      return Promise.reject(new ApiError(`HTTP_${status}`, message))
+    }
+    if (error.code === 'ECONNABORTED' || error.code === 'ERR_CANCELED') {
+      return Promise.reject(new ApiError('TIMEOUT', '请求超时'))
+    }
+    return Promise.reject(new ApiError('NETWORK_ERROR', error.message || '网络错误'))
   },
 )
 
