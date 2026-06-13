@@ -21,4 +21,9 @@ public class AgentFacadeImpl implements AgentFacade {
     public AgentConfigDTO getAgentConfig(String agentId) {
         return agentService.getAgentConfig(agentId);
     }
+
+    @Override
+    public boolean isModelAvailable(String modelId) {
+        return agentService.isModelAvailable(modelId);
+    }
 }

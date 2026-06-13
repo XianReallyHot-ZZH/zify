@@ -150,11 +150,20 @@ public class AgentService {
     }
 
     private void validateModelAvailable(String modelId) {
-        boolean available = modelFacade.listAvailableModels("LLM").stream()
-                .anyMatch(m -> modelId.equals(m.getId()));
-        if (!available) {
+        if (!isModelAvailable(modelId)) {
             throw new BusinessException(ErrorCode.MODEL_UNAVAILABLE);
         }
+    }
+
+    /**
+     * 给定模型是否为可用 LLM（供 AgentFacade 暴露给 chat/engine 做发送前/会话前校验）。
+     */
+    public boolean isModelAvailable(String modelId) {
+        if (modelId == null) {
+            return false;
+        }
+        return modelFacade.listAvailableModels("LLM").stream()
+                .anyMatch(m -> modelId.equals(m.getId()));
     }
 
     private String modelNameFor(String modelId) {

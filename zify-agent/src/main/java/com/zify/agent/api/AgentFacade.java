@@ -12,4 +12,11 @@ public interface AgentFacade {
      * 不存在/已删除抛 AGENT_NOT_FOUND。
      */
     AgentConfigDTO getAgentConfig(String agentId);
+
+    /**
+     * 校验给定模型 ID 是否为可用 LLM（model.enabled=1 AND provider.status=ACTIVE AND 均未删除）。
+     * <p>
+     * agent 模块依赖 model，由其在 Facade 上代为校验，避免 chat/engine 直接依赖 model。
+     */
+    boolean isModelAvailable(String modelId);
 }

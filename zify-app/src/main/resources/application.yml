@@ -46,6 +46,13 @@ zify:
         first-token: 30s
         idle: 45s
         total: 120s
+  chat:
+    context:
+      default-window: 128000
+      budget-threshold: 0.75
+      compaction-batch: 6
+      max-input-tokens: 30000
+      summary-overhead-tokens: 2000
   external-call:
     connect-timeout: 10s
     read-timeout: 60s
