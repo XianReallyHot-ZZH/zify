@@ -41,7 +41,6 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
 
   // 监听供应商类型变化，自动预填 Base URL
   const providerType = Form.useWatch('providerType', form)
-  const apiKeyValue = Form.useWatch('apiKey', form)
 
   useEffect(() => {
     if (providerType && !isEdit) {
@@ -163,13 +162,10 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
           <Select options={PROVIDER_TYPE_OPTIONS} disabled={isEdit} placeholder="选择供应商类型" />
         </Form.Item>
 
-        <Form.Item label="API Key">
+        <Form.Item name="apiKey" label="API Key">
           {hasApiKey ? (
             <Input
-              value={apiKeyValue}
-              onChange={(e) => form.setFieldValue('apiKey', e.target.value)}
               type={apiKeyRevealed ? 'text' : 'password'}
-              placeholder={MASKED_PLACEHOLDER}
               suffix={
                 <Button
                   type="text"
@@ -182,9 +178,7 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
               }
             />
           ) : (
-            <Form.Item name="apiKey" noStyle>
-              <Input.Password placeholder="可选，Ollama 等本地服务可留空" />
-            </Form.Item>
+            <Input.Password placeholder="可选，Ollama 等本地服务可留空" />
           )}
         </Form.Item>
 
