@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -98,6 +100,30 @@ public class MessageService {
 
         log.info("User message sent: id={}, conversationId={}", message.getId(), conversationId);
         return new SendMessageResult(message.getId(), message.getCreatedAt());
+    }
+
+    /**
+     * 流式生成完成后落库 ASSISTANT 消息 + 更新会话计数/时间（短事务，在 LLM 调用之外）。
+     * <p>
+     * 由 {@code ChatStreamService} 在 runTurn 成功（或取消且已产出部分文本）时调用。
+     *
+     * @param metadata 运行元数据（modelId/tokens/finishReason/durationMs ...），可空
+     */
+    @Transactional
+    public void persistAssistantTurn(String conversationId, String assistantMessageId, String content,
+                                     Map<String, Object> metadata) {
+        MessageEntity message = new MessageEntity();
+        message.setId(assistantMessageId);
+        message.setConversationId(conversationId);
+        message.setRole("ASSISTANT");
+        message.setContent(content);
+        message.setMetadata(metadata);
+        messageMapper.insert(message);
+
+        conversationMapper.update(null, new LambdaUpdateWrapper<ConversationEntity>()
+                .eq(ConversationEntity::getId, conversationId)
+                .setSql("message_count = message_count + 1")
+                .set(ConversationEntity::getLastMessageAt, message.getCreatedAt()));
     }
 
     /**
