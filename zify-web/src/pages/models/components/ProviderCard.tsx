@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Card, message, Popconfirm, Space, Spin, Switch, Tag } from 'antd'
 import { DownOutlined, RightOutlined } from '@ant-design/icons'
+import { ApiError } from '../../../api/request'
 import type { ProviderResponse, ModelResponse } from '../../../api/modelApi'
 import { listProviderModels, updateModelEnabled, deleteModel, testModel, testProvider } from '../../../api/modelApi'
 
@@ -56,8 +57,8 @@ export default function ProviderCard({
         const result = await listProviderModels(provider.id)
         setModels(result)
         setModelsLoaded(true)
-      } catch {
-        message.error('加载模型列表失败')
+      } catch (err) {
+        message.error(err instanceof ApiError ? err.message : '加载模型列表失败')
       } finally {
         setModelsLoading(false)
       }
@@ -73,8 +74,8 @@ export default function ProviderCard({
       } else {
         message.error(result.message)
       }
-    } catch {
-      message.error('测试请求失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '测试请求失败')
     } finally {
       setProviderTestLoading(false)
     }
@@ -89,8 +90,8 @@ export default function ProviderCard({
       } else {
         message.error(result.message)
       }
-    } catch {
-      message.error('测试请求失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '测试请求失败')
     } finally {
       setModelTestLoading(prev => ({ ...prev, [model.id]: false }))
     }
@@ -100,11 +101,10 @@ export default function ProviderCard({
     try {
       await updateModelEnabled(model.id, !model.enabled)
       message.success(model.enabled ? '模型已禁用' : '模型已启用')
-      // 更新本地状态
       setModels(prev => prev.map(m => m.id === model.id ? { ...m, enabled: !m.enabled } : m))
       onToggleModel({ ...model, enabled: !model.enabled })
-    } catch {
-      message.error('操作失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '操作失败')
     }
   }
 
@@ -114,8 +114,8 @@ export default function ProviderCard({
       message.success('模型已删除')
       setModels(prev => prev.filter(m => m.id !== model.id))
       onDeleteModel(model)
-    } catch {
-      message.error('删除失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '删除失败')
     }
   }
 

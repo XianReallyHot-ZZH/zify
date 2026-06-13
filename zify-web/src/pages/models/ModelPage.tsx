@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, message, Pagination, Select, Spin } from 'antd'
+import { ApiError } from '../../api/request'
 import { PageHeader } from '../../shared/ui'
 import Empty from '../../shared/ui/Empty'
 import {
@@ -50,8 +51,8 @@ export default function ModelPage() {
       })
       setProviders(result.records)
       setTotal(result.total)
-    } catch {
-      message.error('加载供应商列表失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '加载供应商列表失败')
     } finally {
       setLoading(false)
     }
@@ -74,15 +75,23 @@ export default function ModelPage() {
   }
 
   async function handleProviderSubmit(values: CreateProviderRequest | UpdateProviderRequest) {
-    if (editingProvider) {
-      await updateProvider(editingProvider.id, values as UpdateProviderRequest)
-      message.success('供应商更新成功')
-    } else {
-      await createProvider(values as CreateProviderRequest)
-      message.success('供应商创建成功')
+    try {
+      if (editingProvider) {
+        await updateProvider(editingProvider.id, values as UpdateProviderRequest)
+        message.success('供应商更新成功')
+      } else {
+        await createProvider(values as CreateProviderRequest)
+        message.success('供应商创建成功')
+      }
+      setProviderFormOpen(false)
+      loadProviders()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        message.error(err.message)
+      } else {
+        message.error('操作失败')
+      }
     }
-    setProviderFormOpen(false)
-    loadProviders()
   }
 
   async function handleDeleteProvider(provider: ProviderResponse) {
@@ -90,8 +99,8 @@ export default function ModelPage() {
       await deleteProvider(provider.id)
       message.success('供应商已删除')
       loadProviders()
-    } catch {
-      message.error('删除失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '删除失败')
     }
   }
 
@@ -101,8 +110,8 @@ export default function ModelPage() {
       await updateProviderStatus(provider.id, newStatus)
       message.success(newStatus === 'ACTIVE' ? '供应商已启用' : '供应商已禁用')
       loadProviders()
-    } catch {
-      message.error('操作失败')
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '操作失败')
     }
   }
 
@@ -121,15 +130,23 @@ export default function ModelPage() {
   }
 
   async function handleModelSubmit(values: CreateModelRequest | UpdateModelRequest) {
-    if (editingModel) {
-      await updateModel(editingModel.id, values as UpdateModelRequest)
-      message.success('模型更新成功')
-    } else {
-      await createModel(currentProviderId, values as CreateModelRequest)
-      message.success('模型添加成功')
+    try {
+      if (editingModel) {
+        await updateModel(editingModel.id, values as UpdateModelRequest)
+        message.success('模型更新成功')
+      } else {
+        await createModel(currentProviderId, values as CreateModelRequest)
+        message.success('模型添加成功')
+      }
+      setModelFormOpen(false)
+      loadProviders()
+    } catch (err) {
+      if (err instanceof ApiError) {
+        message.error(err.message)
+      } else {
+        message.error('操作失败')
+      }
     }
-    setModelFormOpen(false)
-    loadProviders()
   }
 
   // 模型删除/禁用后需要刷新供应商（modelCount 变化）

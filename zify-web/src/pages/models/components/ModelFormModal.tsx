@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Form, Input, InputNumber, Modal, Select, Switch } from 'antd'
+import { ApiError } from '../../../api/request'
 import type {
   ModelResponse,
   CreateModelRequest,
@@ -69,8 +70,11 @@ export default function ModelFormModal({ open, model, onSubmit, onCancel }: Mode
         }
         await onSubmit(createData)
       }
-    } catch {
-      // 表单校验失败
+    } catch (err) {
+      // 表单校验失败不处理；API 错误继续向上抛，让页面层展示错误消息
+      if (err instanceof ApiError) {
+        throw err
+      }
     } finally {
       setSubmitting(false)
     }

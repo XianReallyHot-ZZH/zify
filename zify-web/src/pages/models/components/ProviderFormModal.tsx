@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Form, Input, Modal, Select } from 'antd'
+import { ApiError } from '../../../api/request'
 import type {
   ProviderResponse,
   CreateProviderRequest,
@@ -100,8 +101,11 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
         }
         await onSubmit(createData)
       }
-    } catch {
-      // 表单校验失败，不做处理
+    } catch (err) {
+      // 表单校验失败不处理；API 错误继续向上抛，让页面层展示错误消息
+      if (err instanceof ApiError) {
+        throw err
+      }
     } finally {
       setSubmitting(false)
     }
