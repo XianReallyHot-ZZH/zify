@@ -70,6 +70,8 @@ zify-model 子模块内 com.zify.model.infrastructure.client.LlmGateway
 
 不使用 WebClient。原因是 Zify 一期由一个人开发，同步代码更容易调试和维护；Virtual Threads 已经能解决阻塞式 IO 的线程占用问题。
 
+> **一致性说明（P1 起）**：LLM 流式对话调用采用 Spring AI（见 `docs-prompt/prompt-04`）。Spring AI 的 `stream()` 内部为 reactive（WebClient）传输，此时在虚拟线程上用阻塞桥接（`CountDownLatch.await`）适配 `TextStreamSink`，取消上游 = `dispose` 订阅。因此本节「不用 WebClient、用 RestClient 同步」**仅适用于 Spring AI 之外的直接外部调用**（HTTP 工具、MCP、Provider 连通性测试等）。§4 超时 / §5 重试 / 并发保护 / §七 异常分类 对两类调用都适用。
+
 ### 3.2 基础配置
 
 ```yaml
