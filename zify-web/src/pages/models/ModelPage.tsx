@@ -40,6 +40,9 @@ export default function ModelPage() {
   const [currentProviderId, setCurrentProviderId] = useState('')
   const [editingModel, setEditingModel] = useState<ModelResponse | undefined>()
 
+  // 模型数据版本号，模型增删改后递增，触发 ProviderCard 刷新模型列表
+  const [modelVersion, setModelVersion] = useState(0)
+
   const loadProviders = useCallback(async () => {
     setLoading(true)
     try {
@@ -140,6 +143,7 @@ export default function ModelPage() {
       }
       setModelFormOpen(false)
       loadProviders()
+      setModelVersion(v => v + 1)
     } catch (err) {
       if (err instanceof ApiError) {
         message.error(err.message)
@@ -152,6 +156,7 @@ export default function ModelPage() {
   // 模型删除/禁用后需要刷新供应商（modelCount 变化）
   function handleDeleteModel(_model: ModelResponse) {
     loadProviders()
+    setModelVersion(v => v + 1)
   }
 
   function handleToggleModel(_model: ModelResponse) {
@@ -207,6 +212,7 @@ export default function ModelPage() {
               <ProviderCard
                 key={provider.id}
                 provider={provider}
+                modelVersion={modelVersion}
                 onEdit={handleEditProvider}
                 onDelete={handleDeleteProvider}
                 onToggleStatus={handleToggleProviderStatus}

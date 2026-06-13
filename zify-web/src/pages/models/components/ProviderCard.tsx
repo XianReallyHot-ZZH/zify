@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Card, message, Popconfirm, Space, Spin, Switch, Tag } from 'antd'
 import { DownOutlined, RightOutlined } from '@ant-design/icons'
 import { ApiError } from '../../../api/request'
@@ -7,6 +7,7 @@ import { listProviderModels, updateModelEnabled, deleteModel, testModel, testPro
 
 type ProviderCardProps = {
   provider: ProviderResponse
+  modelVersion: number
   onEdit: (provider: ProviderResponse) => void
   onDelete: (provider: ProviderResponse) => void
   onToggleStatus: (provider: ProviderResponse) => void
@@ -30,6 +31,7 @@ const MODEL_TYPE_TAG: Record<string, { label: string; color: string }> = {
 
 export default function ProviderCard({
   provider,
+  modelVersion,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -46,6 +48,19 @@ export default function ProviderCard({
   const [providerTestLoading, setProviderTestLoading] = useState(false)
 
   const isActive = provider.status === 'ACTIVE'
+
+  // 模型版本变化时重置缓存并重新加载
+  useEffect(() => {
+    if (expanded && modelsLoaded) {
+      setModelsLoading(true)
+      listProviderModels(provider.id)
+        .then(result => setModels(result))
+        .catch(() => message.error('加载模型列表失败'))
+        .finally(() => setModelsLoading(false))
+    } else {
+      setModelsLoaded(false)
+    }
+  }, [modelVersion])
 
   async function handleExpand() {
     const nextExpanded = !expanded
