@@ -26,7 +26,7 @@ zify:
     dir: ${UPLOAD_DIR:/data/uploads}
     max-size: 100MB
   security:
-    encryption-key: ${ZIFY_ENCRYPTION_KEY:}
+    encryption-key: ${ZIFY_ENCRYPTION_KEY:my-secret-key-for-aes-encryption-2026}
   llm:
     provider-defaults:
       max-concurrent: 20
