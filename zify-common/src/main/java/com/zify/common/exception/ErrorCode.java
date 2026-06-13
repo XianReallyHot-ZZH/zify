@@ -19,6 +19,10 @@ public enum ErrorCode {
 
     // ── 业务 ──────────────────────────────────────────────
     AGENT_NOT_FOUND(1001, "Agent 不存在"),
+    AGENT_NAME_DUPLICATE(1002, "Agent 名称已存在"),
+    AGENT_TYPE_INVALID(1003, "Agent 类型非法"),
+    AGENT_TYPE_IMMUTABLE(1004, "Agent 类型不可修改"),
+    AGENT_INACTIVE(1005, "Agent 已禁用"),
     MODEL_PROVIDER_ERROR(1101, "模型服务调用失败"),
     PROVIDER_NAME_DUPLICATE(1102, "供应商名称已存在"),
     PROVIDER_NOT_FOUND(1103, "供应商不存在"),
