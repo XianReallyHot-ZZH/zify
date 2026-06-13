@@ -72,6 +72,21 @@ export type MessageListQuery = {
 }
 
 /**
+ * 前端视图消息（chatStore 中维护，含流式临时态）。
+ */
+export type MessageView = {
+  id: string
+  role: string
+  content: string
+  metadata: MessageMetadata
+  createdAt: string
+  /** 流式生成中（临时 ASSISTANT 气泡），完成/出错后置 false */
+  streaming?: boolean
+  /** 生成出错时的提示（仅 ASSISTANT 临时态） */
+  error?: boolean
+}
+
+/**
  * SSE 流式事件（对齐后端 message_delta / done / run_error）。
  * P1 不收 tool_call（P2 才有工具），此处不定义。
  */
