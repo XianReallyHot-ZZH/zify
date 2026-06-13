@@ -15,6 +15,7 @@ interface ChatState {
 
   setCurrentConversation: (id: string | null, messages?: MessageView[]) => void
   appendMessage: (message: MessageView) => void
+  prependMessages: (messages: MessageView[]) => void
   appendDelta: (assistantMessageId: string, delta: string) => void
   finishAssistant: (assistantMessageId: string, error?: string) => void
   setStreaming: (streaming: boolean) => void
@@ -38,6 +39,10 @@ export const useChatStore = create<ChatState>((set) => ({
 
   appendMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
+
+  // 在头部插入更早的历史消息（「加载更多」向上翻）
+  prependMessages: (older) =>
+    set((state) => ({ messages: [...older, ...state.messages] })),
 
   // 若该 ASSISTANT 气泡不存在则创建（streaming），存在则追加 delta
   appendDelta: (assistantMessageId, delta) =>
