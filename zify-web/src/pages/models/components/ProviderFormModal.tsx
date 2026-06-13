@@ -41,6 +41,7 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
 
   // 监听供应商类型变化，自动预填 Base URL
   const providerType = Form.useWatch('providerType', form)
+  const apiKeyValue = Form.useWatch('apiKey', form)
 
   useEffect(() => {
     if (providerType && !isEdit) {
@@ -165,7 +166,7 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
         <Form.Item label="API Key">
           {hasApiKey ? (
             <Input
-              value={Form.useWatch('apiKey', form)}
+              value={apiKeyValue}
               onChange={(e) => form.setFieldValue('apiKey', e.target.value)}
               type={apiKeyRevealed ? 'text' : 'password'}
               placeholder={MASKED_PLACEHOLDER}
