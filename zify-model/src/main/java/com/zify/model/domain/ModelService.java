@@ -14,6 +14,7 @@ import com.zify.model.api.dto.model.ModelSummary;
 import com.zify.model.api.dto.model.ModelTestResult;
 import com.zify.model.api.dto.model.UpdateModelRequest;
 import com.zify.model.api.dto.provider.ProviderTestResult;
+import com.zify.model.domain.handler.ProviderTestHandler;
 import com.zify.model.infrastructure.converter.ModelConverter;
 import com.zify.model.infrastructure.entity.ModelEntity;
 import com.zify.model.infrastructure.entity.ModelProviderEntity;
@@ -21,13 +22,11 @@ import com.zify.model.infrastructure.mapper.ModelMapper;
 import com.zify.model.infrastructure.mapper.ModelProviderMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -41,16 +40,21 @@ public class ModelService {
     private final ModelMapper modelMapper;
     private final ModelProviderMapper providerMapper;
     private final SecretEncryptor secretEncryptor;
-    private final RestClient modelTestRestClient;
+    private final EnumMap<ProviderType, ProviderTestHandler> handlerMap;
 
     public ModelService(ModelMapper modelMapper,
                         ModelProviderMapper providerMapper,
                         SecretEncryptor secretEncryptor,
-                        RestClient modelTestRestClient) {
+                        List<ProviderTestHandler> handlers) {
         this.modelMapper = modelMapper;
         this.providerMapper = providerMapper;
         this.secretEncryptor = secretEncryptor;
-        this.modelTestRestClient = modelTestRestClient;
+        this.handlerMap = new EnumMap<>(ProviderType.class);
+        for (ProviderTestHandler handler : handlers) {
+            for (ProviderType type : handler.supportedTypes()) {
+                this.handlerMap.put(type, handler);
+            }
+        }
     }
 
     // ─── 模型 CRUD ────────────────────────────────────────────
@@ -198,12 +202,10 @@ public class ModelService {
 
         long start = System.currentTimeMillis();
         try {
-            String providerType = provider.getProviderType();
-            if ("ANTHROPIC".equals(providerType)) {
-                return testAnthropicConnection(baseUrl, apiKey, provider.getExtraConfig(), start);
-            } else {
-                return testOpenAiCompatibleConnection(baseUrl, apiKey, start);
-            }
+            ProviderTestHandler handler = getHandler(provider.getProviderType());
+            return handler.testConnection(baseUrl, apiKey, provider.getExtraConfig(), start);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             long latencyMs = System.currentTimeMillis() - start;
             log.warn("Provider test failed: providerId={}, error={}", providerId, e.getMessage());
@@ -236,12 +238,14 @@ public class ModelService {
 
         long start = System.currentTimeMillis();
         try {
+            ProviderTestHandler handler = getHandler(provider.getProviderType());
             if ("EMBEDDING".equals(model.getModelType())) {
-                return testEmbeddingModel(baseUrl, apiKey, modelName, provider.getProviderType(), start);
+                return handler.testEmbeddingModel(baseUrl, apiKey, modelName, start);
             } else {
-                return testLlmModel(baseUrl, apiKey, modelName, provider.getProviderType(),
-                        provider.getExtraConfig(), start);
+                return handler.testLlmModel(baseUrl, apiKey, modelName, provider.getExtraConfig(), start);
             }
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             long latencyMs = System.currentTimeMillis() - start;
             log.warn("Model test failed: modelId={}, error={}", modelId, e.getMessage());
@@ -290,6 +294,19 @@ public class ModelService {
         return new ProviderInfo("", "", "");
     }
 
+    /**
+     * 根据供应商类型字符串获取对应的测试 Handler
+     */
+    private ProviderTestHandler getHandler(String providerType) {
+        ProviderType type = ProviderType.fromString(providerType);
+        ProviderTestHandler handler = handlerMap.get(type);
+        if (handler == null) {
+            throw new BusinessException(ErrorCode.PROVIDER_TEST_ERROR,
+                    "不支持的供应商类型: " + providerType);
+        }
+        return handler;
+    }
+
     private ModelTestResult buildTestResult(boolean success, String message, long latencyMs, String errorDetail) {
         ModelTestResult result = new ModelTestResult();
         result.setSuccess(success);
@@ -297,125 +314,6 @@ public class ModelService {
         result.setLatencyMs(latencyMs);
         result.setErrorDetail(errorDetail);
         return result;
-    }
-
-    // ─── 连接测试实现 ──────────────────────────────────────────
-
-    private ProviderTestResult testOpenAiCompatibleConnection(String baseUrl, String apiKey, long start) {
-        try {
-            var requestSpec = modelTestRestClient.get()
-                    .uri(baseUrl + "/v1/models")
-                    .accept(MediaType.APPLICATION_JSON);
-
-            if (apiKey != null && !apiKey.isBlank()) {
-                requestSpec.header("Authorization", "Bearer " + apiKey);
-            }
-
-            requestSpec.retrieve().body(String.class);
-            long latencyMs = System.currentTimeMillis() - start;
-
-            ProviderTestResult result = new ProviderTestResult();
-            result.setSuccess(true);
-            result.setMessage("连接成功");
-            result.setLatencyMs(latencyMs);
-            result.setAvailableModels(null);
-            return result;
-        } catch (Exception e) {
-            long latencyMs = System.currentTimeMillis() - start;
-            ProviderTestResult result = new ProviderTestResult();
-            result.setSuccess(false);
-            result.setMessage(extractErrorMessage(e));
-            result.setLatencyMs(latencyMs);
-            return result;
-        }
-    }
-
-    private ProviderTestResult testAnthropicConnection(String baseUrl, String apiKey,
-                                                        Map<String, Object> extraConfig, long start) {
-        String apiVersion = "2023-06-01";
-        if (extraConfig != null && extraConfig.get("apiVersion") != null) {
-            apiVersion = extraConfig.get("apiVersion").toString();
-        }
-
-        String body = "{\"model\":\"claude-sonnet-4-20250514\","
-                + "\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],"
-                + "\"max_tokens\":1}";
-
-        modelTestRestClient.post()
-                .uri(baseUrl + "/v1/messages")
-                .header("x-api-key", apiKey)
-                .header("anthropic-version", apiVersion)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body)
-                .retrieve()
-                .body(String.class);
-
-        long latencyMs = System.currentTimeMillis() - start;
-
-        ProviderTestResult result = new ProviderTestResult();
-        result.setSuccess(true);
-        result.setMessage("连接成功");
-        result.setLatencyMs(latencyMs);
-        result.setAvailableModels(null);
-        return result;
-    }
-
-    private ModelTestResult testLlmModel(String baseUrl, String apiKey, String modelName,
-                                           String providerType, Map<String, Object> extraConfig, long start) {
-        String body = "{\"model\":\"" + modelName
-                + "\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}],"
-                + "\"max_tokens\":1}";
-
-        if ("ANTHROPIC".equals(providerType)) {
-            String apiVersion = "2023-06-01";
-            if (extraConfig != null && extraConfig.get("apiVersion") != null) {
-                apiVersion = extraConfig.get("apiVersion").toString();
-            }
-
-            modelTestRestClient.post()
-                    .uri(baseUrl + "/v1/messages")
-                    .header("x-api-key", apiKey)
-                    .header("anthropic-version", apiVersion)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-        } else {
-            var requestSpec = modelTestRestClient.post()
-                    .uri(baseUrl + "/v1/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
-            if (apiKey != null && !apiKey.isBlank()) {
-                requestSpec.header("Authorization", "Bearer " + apiKey);
-            }
-            requestSpec.retrieve().body(String.class);
-        }
-
-        long latencyMs = System.currentTimeMillis() - start;
-        return buildTestResult(true, "模型可用", latencyMs, null);
-    }
-
-    private ModelTestResult testEmbeddingModel(String baseUrl, String apiKey, String modelName,
-                                                 String providerType, long start) {
-        if ("ANTHROPIC".equals(providerType)) {
-            long latencyMs = System.currentTimeMillis() - start;
-            return buildTestResult(false, "Anthropic 不提供 Embedding 模型", latencyMs,
-                    "Anthropic has no embedding API");
-        }
-
-        String body = "{\"model\":\"" + modelName + "\",\"input\":[\"test\"]}";
-
-        var requestSpec = modelTestRestClient.post()
-                .uri(baseUrl + "/v1/embeddings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(body);
-        if (apiKey != null && !apiKey.isBlank()) {
-            requestSpec.header("Authorization", "Bearer " + apiKey);
-        }
-        requestSpec.retrieve().body(String.class);
-
-        long latencyMs = System.currentTimeMillis() - start;
-        return buildTestResult(true, "模型可用", latencyMs, null);
     }
 
     private String extractErrorMessage(Exception e) {
