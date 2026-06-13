@@ -3,6 +3,7 @@ package com.zify.model.controller;
 import com.zify.common.web.PageResult;
 import com.zify.common.web.Result;
 import com.zify.model.api.dto.provider.CreateProviderRequest;
+import com.zify.model.api.dto.provider.ProviderApiKeyResponse;
 import com.zify.model.api.dto.provider.ProviderListQuery;
 import com.zify.model.api.dto.provider.ProviderResponse;
 import com.zify.model.api.dto.provider.ProviderTestResult;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -73,5 +75,11 @@ public class ModelProviderController {
     @PostMapping("/{id}/test")
     public Result<ProviderTestResult> testProvider(@PathVariable String id) {
         return Result.ok(modelService.testProvider(id));
+    }
+
+    @GetMapping("/{id}/api-key")
+    public Result<ProviderApiKeyResponse> getProviderApiKey(@PathVariable String id,
+                                                            @RequestParam(defaultValue = "false") boolean reveal) {
+        return Result.ok(providerService.getProviderApiKey(id, reveal));
     }
 }

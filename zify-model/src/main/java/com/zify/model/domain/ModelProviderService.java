@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zify.common.exception.BusinessException;
 import com.zify.common.exception.ErrorCode;
+import com.zify.common.security.MaskUtils;
 import com.zify.common.security.SecretEncryptor;
 import com.zify.common.web.PageResult;
 import com.zify.model.api.dto.provider.CreateProviderRequest;
+import com.zify.model.api.dto.provider.ProviderApiKeyResponse;
 import com.zify.model.api.dto.provider.ProviderListQuery;
 import com.zify.model.api.dto.provider.ProviderResponse;
 import com.zify.model.api.dto.provider.UpdateProviderRequest;
@@ -167,6 +169,28 @@ public class ModelProviderService {
                         .set(ModelProviderEntity::getStatus, status));
 
         log.info("Provider status updated: id={}, status={}", id, status);
+    }
+
+    /**
+     * 获取供应商 API Key（遮罩或明文）
+     */
+    public ProviderApiKeyResponse getProviderApiKey(String id, boolean reveal) {
+        ModelProviderEntity entity = getProviderOrThrow(id);
+
+        ProviderApiKeyResponse response = new ProviderApiKeyResponse();
+
+        if (entity.getApiKey() == null) {
+            return response;
+        }
+
+        String decrypted = secretEncryptor.decrypt(entity.getApiKey());
+        response.setMaskedApiKey(MaskUtils.maskApiKey(decrypted));
+
+        if (reveal) {
+            response.setDecryptedApiKey(decrypted);
+        }
+
+        return response;
     }
 
     // ─── 内部方法 ────────────────────────────────────────────

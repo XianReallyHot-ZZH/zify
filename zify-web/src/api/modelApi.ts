@@ -45,6 +45,11 @@ type ProviderTestResult = {
   availableModels: string[] | null
 }
 
+type ProviderApiKeyResponse = {
+  maskedApiKey: string | null
+  decryptedApiKey: string | null
+}
+
 // ─── Model Types ───────────────────────────────────────────
 
 type CreateModelRequest = {
@@ -121,6 +126,10 @@ function testProvider(id: string): Promise<ProviderTestResult> {
   return apiPost(`/model/providers/${id}/test`)
 }
 
+function getProviderApiKey(id: string, reveal = false): Promise<ProviderApiKeyResponse> {
+  return apiGet(`/model/providers/${id}/api-key`, { reveal })
+}
+
 // ─── Model API ─────────────────────────────────────────────
 
 function createModel(providerId: string, data: CreateModelRequest): Promise<ModelResponse> {
@@ -161,6 +170,7 @@ export type {
   ProviderListQuery,
   ProviderResponse,
   ProviderTestResult,
+  ProviderApiKeyResponse,
   CreateModelRequest,
   UpdateModelRequest,
   ModelListQuery,
@@ -176,6 +186,7 @@ export {
   deleteProvider,
   updateProviderStatus,
   testProvider,
+  getProviderApiKey,
   createModel,
   listModels,
   listProviderModels,

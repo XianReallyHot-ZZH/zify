@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Form, Input, Modal, Select } from 'antd'
+import { Button, Form, Input, Modal, Select } from 'antd'
+import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons'
 import { ApiError } from '../../../api/request'
+import { getProviderApiKey } from '../../../api/modelApi'
 import type {
   ProviderResponse,
   CreateProviderRequest,
@@ -26,10 +28,16 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
   OPENAI_COMPATIBLE: '',
 }
 
+const MASKED_PLACEHOLDER = '*******'
+
 export default function ProviderFormModal({ open, provider, onSubmit, onCancel }: ProviderFormModalProps) {
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
   const isEdit = !!provider
+
+  // API Key 遮罩/解密状态
+  const [apiKeyRevealed, setApiKeyRevealed] = useState(false)
+  const [apiKeyLoading, setApiKeyLoading] = useState(false)
 
   // 监听供应商类型变化，自动预填 Base URL
   const providerType = Form.useWatch('providerType', form)
@@ -37,7 +45,6 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
   useEffect(() => {
     if (providerType && !isEdit) {
       const currentBaseUrl = form.getFieldValue('baseUrl') || ''
-      // 只在 Base URL 为空或等于之前类型的默认值时自动填充
       const prevDefault = Object.values(DEFAULT_BASE_URLS).find(v => v === currentBaseUrl)
       if (!currentBaseUrl || prevDefault !== undefined) {
         form.setFieldValue('baseUrl', DEFAULT_BASE_URLS[providerType] || '')
@@ -48,22 +55,46 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
   // 弹窗打开时初始化表单
   useEffect(() => {
     if (open) {
+      setApiKeyRevealed(false)
       if (provider) {
-        // 编辑模式：预填数据
         const apiVersion = provider.extraConfig?.apiVersion as string | undefined
         form.setFieldsValue({
           name: provider.name,
           providerType: provider.providerType,
-          apiKey: undefined,
+          apiKey: provider.hasApiKey ? MASKED_PLACEHOLDER : undefined,
           baseUrl: provider.baseUrl,
           apiVersion: apiVersion || '',
         })
       } else {
-        // 创建模式：重置
         form.resetFields()
       }
     }
   }, [open, provider, form])
+
+  async function handleToggleApiKeyReveal() {
+    if (!provider) return
+
+    if (apiKeyRevealed) {
+      // 切回遮罩
+      form.setFieldValue('apiKey', MASKED_PLACEHOLDER)
+      setApiKeyRevealed(false)
+      return
+    }
+
+    // 请求解密
+    setApiKeyLoading(true)
+    try {
+      const result = await getProviderApiKey(provider.id, true)
+      if (result.decryptedApiKey) {
+        form.setFieldValue('apiKey', result.decryptedApiKey)
+        setApiKeyRevealed(true)
+      }
+    } catch {
+      // 解密失败，保持遮罩
+    } finally {
+      setApiKeyLoading(false)
+    }
+  }
 
   async function handleOk() {
     try {
@@ -71,15 +102,14 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
       setSubmitting(true)
 
       if (isEdit) {
-        // 编辑模式：不提交 providerType，apiKey 留空时不提交
         const updateData: UpdateProviderRequest = {
           name: values.name,
           baseUrl: values.baseUrl,
         }
-        if (values.apiKey) {
+        // 遮罩占位符不算有效输入，只有用户实际修改了才提交
+        if (values.apiKey && values.apiKey !== MASKED_PLACEHOLDER) {
           updateData.apiKey = values.apiKey
         }
-        // Anthropic 时提交 apiVersion 作为 extraConfig
         if (provider?.providerType === 'ANTHROPIC') {
           updateData.extraConfig = values.apiVersion
             ? { apiVersion: values.apiVersion }
@@ -87,7 +117,6 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
         }
         await onSubmit(updateData)
       } else {
-        // 创建模式
         const createData: CreateProviderRequest = {
           name: values.name,
           providerType: values.providerType,
@@ -102,7 +131,6 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
         await onSubmit(createData)
       }
     } catch (err) {
-      // 表单校验失败不处理；API 错误继续向上抛，让页面层展示错误消息
       if (err instanceof ApiError) {
         throw err
       }
@@ -113,6 +141,7 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
 
   const currentType = isEdit ? provider.providerType : providerType
   const showApiVersion = currentType === 'ANTHROPIC'
+  const hasApiKey = isEdit && provider.hasApiKey
 
   return (
     <Modal
@@ -133,10 +162,29 @@ export default function ProviderFormModal({ open, provider, onSubmit, onCancel }
           <Select options={PROVIDER_TYPE_OPTIONS} disabled={isEdit} placeholder="选择供应商类型" />
         </Form.Item>
 
-        <Form.Item name="apiKey" label="API Key">
-          <Input.Password
-            placeholder={isEdit ? '留空则不修改' : '可选，Ollama 等本地服务可留空'}
-          />
+        <Form.Item label="API Key">
+          {hasApiKey ? (
+            <Input
+              value={Form.useWatch('apiKey', form)}
+              onChange={(e) => form.setFieldValue('apiKey', e.target.value)}
+              type={apiKeyRevealed ? 'text' : 'password'}
+              placeholder={MASKED_PLACEHOLDER}
+              suffix={
+                <Button
+                  type="text"
+                  size="small"
+                  loading={apiKeyLoading}
+                  onClick={handleToggleApiKeyReveal}
+                  icon={apiKeyRevealed ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                  style={{ marginRight: -4 }}
+                />
+              }
+            />
+          ) : (
+            <Form.Item name="apiKey" noStyle>
+              <Input.Password placeholder="可选，Ollama 等本地服务可留空" />
+            </Form.Item>
+          )}
         </Form.Item>
 
         <Form.Item name="baseUrl" label="Base URL" rules={[{ required: true, message: '请输入 Base URL' }]}>
