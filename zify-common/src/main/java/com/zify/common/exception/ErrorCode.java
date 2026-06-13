@@ -37,6 +37,11 @@ public enum ErrorCode {
     KNOWLEDGE_NOT_FOUND(1201, "知识库不存在"),
     WORKFLOW_NOT_FOUND(1301, "工作流不存在"),
     TOOL_NOT_FOUND(1401, "工具不存在"),
+    CONVERSATION_NOT_FOUND(1501, "会话不存在"),
+    CONVERSATION_NOT_ACTIVE(1502, "会话非活跃状态"),
+    MESSAGE_CONTENT_EMPTY(1503, "消息内容为空"),
+    MESSAGE_TOO_LONG(1504, "消息内容过长"),
+    CHAT_TURN_FAILED(1505, "对话生成失败"),
 
     // ── 通用 5xx ──────────────────────────────────────────
     INTERNAL_ERROR(500, "服务器内部错误"),
