@@ -104,6 +104,7 @@ public final class ModelConverter {
         summary.setModelName(entity.getModelName());
         summary.setProviderName(providerName);
         summary.setProviderType(providerType);
+        summary.setContextWindow(entity.getContextWindow());
         return summary;
     }
 }

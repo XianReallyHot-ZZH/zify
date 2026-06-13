@@ -10,6 +10,8 @@ public class ModelSummary {
     private String modelName;
     private String providerName;
     private String providerType;
+    /** 模型上下文窗口（token），可空（NULL 时用全局默认值）。供 engine 上下文预算计算。 */
+    private Integer contextWindow;
 
     public String getId() {
         return id;
@@ -49,5 +51,13 @@ public class ModelSummary {
 
     public void setProviderType(String providerType) {
         this.providerType = providerType;
+    }
+
+    public Integer getContextWindow() {
+        return contextWindow;
+    }
+
+    public void setContextWindow(Integer contextWindow) {
+        this.contextWindow = contextWindow;
     }
 }

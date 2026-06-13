@@ -1,6 +1,7 @@
 package com.zify.chat.domain;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.zify.agent.api.AgentFacade;
 import com.zify.agent.api.dto.AgentConfigDTO;
 import com.zify.chat.api.dto.ConversationResponse;
@@ -130,6 +131,25 @@ public class ConversationService {
         messageMapper.delete(new LambdaQueryWrapper<MessageEntity>()
                 .eq(MessageEntity::getConversationId, id));
         log.info("Conversation deleted (soft, cascade messages): id={}", id);
+    }
+
+    /**
+     * 落库历史摘要（engine 压缩后由 chat 写入 conversation）。
+     * <p>
+     * 幂等 CAS：仅当 summary_covered_message_id 仍为旧值（或首次为空）时更新，避免并发推进覆盖。
+     */
+    @Transactional
+    public void updateSummary(String conversationId, String summaryText, String coveredMessageId,
+                              String previousCoveredId) {
+        int updated = conversationMapper.update(null, new LambdaUpdateWrapper<ConversationEntity>()
+                .eq(ConversationEntity::getId, conversationId)
+                .and(w -> w.isNull(ConversationEntity::getSummaryCoveredMessageId)
+                        .or().eq(ConversationEntity::getSummaryCoveredMessageId, previousCoveredId))
+                .set(ConversationEntity::getSummaryText, summaryText)
+                .set(ConversationEntity::getSummaryCoveredMessageId, coveredMessageId));
+        if (updated == 0) {
+            log.info("Summary CAS skipped (already advanced): conversationId={}", conversationId);
+        }
     }
 
     private ConversationEntity getConversationOrThrow(String id) {

@@ -54,16 +54,19 @@ public class ChatStreamService {
     private final AgentFacade agentFacade;
     private final EngineFacade engineFacade;
     private final MessageService messageService;
+    private final ConversationService conversationService;
     private final ExecutorService llmTaskExecutor;
 
     public ChatStreamService(MessageMapper messageMapper, ConversationMapper conversationMapper,
                              AgentFacade agentFacade, EngineFacade engineFacade, MessageService messageService,
+                             ConversationService conversationService,
                              @Qualifier("llmTaskExecutor") ExecutorService llmTaskExecutor) {
         this.messageMapper = messageMapper;
         this.conversationMapper = conversationMapper;
         this.agentFacade = agentFacade;
         this.engineFacade = engineFacade;
         this.messageService = messageService;
+        this.conversationService = conversationService;
         this.llmTaskExecutor = llmTaskExecutor;
     }
 
@@ -143,6 +146,12 @@ public class ChatStreamService {
             messageService.persistAssistantTurn(convId, assistantMessageId,
                     accumulated.toString(), metadata);
 
+            // 摘要落库：仅当 engine 本轮触发了压缩（newSummary 非空），幂等 CAS
+            if (result.getNewSummary() != null) {
+                conversationService.updateSummary(convId, result.getNewSummary(),
+                        result.getNewSummaryCoveredMessageId(), summaryCoveredId);
+            }
+
             Map<String, Object> donePayload = new LinkedHashMap<>();
             donePayload.put("conversationId", convId);
             donePayload.put("assistantMessageId", assistantMessageId);
@@ -217,7 +226,7 @@ public class ChatStreamService {
         }
 
         return entities.stream()
-                .map(m -> new ChatMessage(m.getRole(), m.getContent()))
+                .map(m -> new ChatMessage(m.getRole(), m.getContent(), m.getId()))
                 .toList();
     }
 

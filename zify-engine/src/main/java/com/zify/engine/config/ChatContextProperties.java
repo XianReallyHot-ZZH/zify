@@ -1,10 +1,13 @@
-package com.zify.chat.domain;
+package com.zify.engine.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
  * 对话上下文管理配置（绑定 zify.chat.context）。
+ * <p>
+ * 放 engine（chat 依赖 engine 复用）：ContextManager 预算估算 + chat 单条消息上限共用。
+ * 前缀沿用 zify.chat.context（属于 chat 功能的上下文配置）。
  */
 @Component
 @ConfigurationProperties(prefix = "zify.chat.context")
