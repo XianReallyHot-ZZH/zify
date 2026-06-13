@@ -39,7 +39,10 @@ Zify 项目工程骨架已经搭好（Maven 多模块、zify-common 的 Result /
 ### 执行
 根据 @docs-prompt\prompt-03-model-manager.md 文档, 开始执行任务 1 , 任务完成无误后进行 commit
 
-
+## 探讨模块开发顺序
+阅读 @glm-docs/02-zify-v01-modules.md 和 @glm-docs/03-zify-v01-frontend-view.md 了解 Zify 的产品定义。
+从产品、开发两个角度思维出发，对 Zify 整体的开发顺序，覆盖每一阶段的功能与边界，进行整体的拆解与编排，直到完成 Zify 的所有完整功能。
+把拆解结果，写到 @glm-docs 路径下。
 
 
 
