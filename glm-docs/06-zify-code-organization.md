@@ -833,19 +833,21 @@ export function deleteAgent(id: string): Promise<void> {
 
 ### 11.7 SSE 流式调用
 
-SSE 不经过 Axios，统一由 `api/engineApi.ts` 创建连接，由 `features/chat/hooks/useChatStream.ts` 处理 UI 状态和 Store 写入。
+SSE 不经过 Axios，统一由 `api/chatApi.ts` 创建连接，由 `features/chat/hooks/useChatStream.ts` 处理 UI 状态和 Store 写入。
 
-发送用户消息和建立流式连接分两步：
+> **归属说明**：SSE 流式端点位于 `chat` 模块（依赖方向 `chat → engine`，会话与消息持久化归 `chat`），路径 `/api/chat/...`，前端用 `chatApi.ts`。`engine` 模块只提供 `EngineFacade` 供 `chat` 内部调用，一期不暴露 HTTP 端点。
 
-1. `chatApi` 或 `engineApi` 使用 POST 提交用户消息，后端返回 `runId` 或 `messageId`。
-2. `engineApi.openChatStream(runId, handlers)` 使用 `EventSource` 打开 `/api/engine/chat/stream?runId=...`。
+发送用户消息和建立流式连接分两步（受 `EventSource` 只能 GET、不能带 body 的约束）：
+
+1. `chatApi.sendMessage(conversationId, content)` 使用 POST 提交用户消息并落库，后端返回 `userMessageId`。
+2. `chatApi.openChatStream(messageId, handlers)` 使用 `EventSource` 打开 `/api/chat/stream?messageId=...`，流式接收 ASSISTANT 回复。
 
 SSE API 模板：
 
 ```typescript
-// api/engineApi.ts
+// api/chatApi.ts（流式部分）
 import { toQueryString } from '@/shared/utils/queryString';
-import type { ChatStreamEvent } from '@/types/engine';
+import type { ChatStreamEvent } from '@/types/chat';
 
 type ChatStreamHandlers = {
   onMessageDelta: (event: Extract<ChatStreamEvent, { type: 'message_delta' }>) => void;
@@ -854,8 +856,8 @@ type ChatStreamHandlers = {
   onRunError: (event: Extract<ChatStreamEvent, { type: 'run_error' }>) => void;
 };
 
-export function openChatStream(runId: string, handlers: ChatStreamHandlers): EventSource {
-  const es = new EventSource(`/api/engine/chat/stream?${toQueryString({ runId })}`);
+export function openChatStream(messageId: string, handlers: ChatStreamHandlers): EventSource {
+  const es = new EventSource(`/api/chat/stream?${toQueryString({ messageId })}`);
 
   es.addEventListener('message_delta', (event) => {
     handlers.onMessageDelta(JSON.parse(event.data));
@@ -884,7 +886,7 @@ export function openChatStream(runId: string, handlers: ChatStreamHandlers): Eve
 }
 ```
 
-事件类型放在 `types/engine.ts`：
+事件类型放在 `types/chat.ts`：
 
 ```typescript
 export type ChatStreamEvent =
@@ -896,7 +898,7 @@ export type ChatStreamEvent =
 
 规则：
 
-- 输入正文不放在 SSE query string 中，query string 只传 `runId` 这类短 ID。
+- 输入正文不放在 SSE query string 中，query string 只传 `messageId` 这类短 ID。
 - 中断按钮必须先关闭当前 `EventSource`，如后端提供取消接口，再调用取消接口。
 - SSE 回调中不直接操作 DOM；状态更新放在 `useChatStream.ts` 或 `chatStore.ts` action 中。
 
@@ -928,7 +930,7 @@ export type ChatStreamEvent =
 
 | 前端页面 | 后端模块 | API 文件 |
 |---|---|---|
-| 对话 `/` | `chat` + `engine` + `agent` | `chatApi.ts`、`engineApi.ts`、`agentApi.ts` |
+| 对话 `/` | `chat` + `engine` + `agent` | `chatApi.ts`、`agentApi.ts` |
 | Agents `/agents` | `agent` + `model` + `tool` + `knowledge` + `workflow` | `agentApi.ts`、选项数据调用对应模块 API |
 | 工作流 `/workflows` | `workflow` + `trigger` + `model` + `knowledge` + `tool` | `workflowApi.ts`、`triggerApi.ts`、选项数据调用对应模块 API |
 | 知识库 `/knowledge` | `knowledge` | `knowledgeApi.ts` |
@@ -939,7 +941,7 @@ export type ChatStreamEvent =
 
 - 页面需要其他模块的下拉选项时，调用对应模块的 API 文件，不复制 API 函数。
 - `triggerApi.ts` 只被工作流页面和 `features/workflow` 使用，一期不建立触发器页面。
-- `engineApi.ts` 只处理运行和流式接口，不处理会话 CRUD；会话 CRUD 放 `chatApi.ts`。
+- 一期 `engine` 模块无 HTTP 端点（`EngineFacade` 仅供 `chat` 内部调用）；流式接口与会话 CRUD 统一在 `chatApi.ts`。`engineApi.ts` 暂不使用，待后续阶段 `engine` 暴露 HTTP 运行接口时再启用。
 
 ### 11.10 命名规范
 

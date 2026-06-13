@@ -19,9 +19,11 @@
 
 每个阶段都是「Controller → Service → Facade → 前端」一整刀切到底，最早暴露分层架构问题（跨模块 Facade 边界、事务不覆盖外部调用、SSE 放置位置等），早暴露早改，代价最低。
 
-### 3. 接口先行（一次性定义全部 Facade）
+### 3. 接口先行（按消费顺序定义 Facade）
 
-依赖图（`CLAUDE.md` §2）要求 `engine` 依赖 `tool/knowledge/workflow`、`agent` 依赖 `workflow`。为避免「上游模块不存在导致编译失败」，**在 Phase 1 一次性把 7 个业务模块的 Facade 接口全部定义出来**（实现可为 no-op），保证整个依赖图从第一天起就能编译通过；后续阶段只往里填实现，不再动模块边界。
+依赖图（`CLAUDE.md` §2）要求 `engine` 依赖 `tool/knowledge/workflow`、`agent` 依赖 `workflow`，这些 Maven `<dependency>` 在 P1 前已按依赖图声明齐全，**整个依赖图从第一天起就能编译通过**，无需为未消费的模块预建 no-op Facade。
+
+P1 只定义它**实际消费**的 Facade：`AgentFacade`、`EngineFacade`，以及 `model` 模块新增的 `ModelFacade.chatStream`。`ToolFacade` / `KnowledgeFacade` / `WorkflowFacade` 推迟到 P2 / P3 / P4 首次被消费时再定义；P1 不引用这三个模块的运行逻辑。
 
 ### 4. 每阶段过硬约束
 
@@ -81,7 +83,7 @@ P0 基线 ──────► P1 核心闭环 ──┬──► P2 工具+ReA
 | 模块 | 本阶段做 | 跨模块接口 |
 |------|---------|-----------|
 | **agent** | `agent` 表；Agent CRUD；基础配置（名称/描述/System Prompt/模型选择/类型选择）。类型**只支持 ReAct**（Workflow 类型留到 P4）。工具/知识库绑定先留接口、空实现 | 定义 `AgentFacade`（供 engine 取 Agent 配置） |
-| **engine** | 最小编排：**零工具**即「调一次 LLM → 流式返回」；打通 SSE 流式、断连/超时取消上游 LLM、显式 retry wrapper、超时配置（`07`）；ReAct 框架搭好但循环一轮即结束 | 定义 `EngineFacade`（流式对话执行入口）；定义 `ToolFacade`/`KnowledgeFacade`/`WorkflowFacade` **接口**（no-op 实现，仅为编译） |
+| **engine** | 最小编排：**零工具**即「调一次 LLM → 流式返回」；打通 SSE 流式、断连/超时取消上游 LLM、显式 retry wrapper、超时配置（`07`）；ReAct 框架搭好但循环一轮即结束 | 定义 `EngineFacade`（对话执行入口，纯编排无 DB）；`ToolFacade`/`KnowledgeFacade`/`WorkflowFacade` 推迟到 P2/P3/P4（P1 不消费） |
 | **chat** | `conversation` / `message` 表；会话 CRUD、新建、删除、继续对话；消息持久化（用户消息 + AI 回复） | — |
 
 **关键架构决策（engine ↔ chat 边界）**：依赖图规定 `chat → engine`（engine 不依赖 chat）。因此：

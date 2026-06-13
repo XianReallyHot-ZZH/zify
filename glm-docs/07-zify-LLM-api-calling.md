@@ -123,29 +123,29 @@ public class LlmRestClientConfig {
 
 ### 3.4 SSE 流式响应线程模型
 
-Controller 只创建 `SseEmitter` 并把任务交给 Service，不直接调用 LLM。
+Controller 只创建 `SseEmitter` 并把任务交给 Service，不直接调用 LLM。Zify 一期流式端点位于 `chat` 模块（依赖方向 `chat → engine`，持久化归 `chat`），实际契约为 `GET /api/chat/stream?messageId=...`（见 `06-zify-code-organization.md` §11.7）；下方为线程模型示意片段。
 
 ```java
-@PostMapping(value = "/api/engine/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-public SseEmitter chatStream(@Valid @RequestBody ChatStreamRequest request) {
+@GetMapping(value = "/api/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+public SseEmitter chatStream(@RequestParam String messageId) {
     SseEmitter emitter = new SseEmitter(120_000L);
-    engineService.startChatStream(request, emitter);
+    chatService.startChatStream(messageId, emitter);
     return emitter;
 }
 ```
 
-Service 中提交虚拟线程任务，并绑定取消逻辑：
+Service 中提交虚拟线程任务，并绑定取消逻辑（`chat` 加载历史后调 `EngineFacade` 执行编排，`engine` 再调 `ModelFacade.chatStream`）：
 
 ```java
 @Service
 @RequiredArgsConstructor
-public class EngineService {
+public class ChatService {
 
     private final ExecutorService llmTaskExecutor;
-    private final EngineStreamRunner engineStreamRunner;
+    private final EngineFacade engineFacade;
 
-    public void startChatStream(ChatStreamRequest request, SseEmitter emitter) {
-        Future<?> future = llmTaskExecutor.submit(() -> engineStreamRunner.run(request, emitter));
+    public void startChatStream(String messageId, SseEmitter emitter) {
+        Future<?> future = llmTaskExecutor.submit(() -> runTurn(messageId, emitter));
 
         emitter.onCompletion(() -> future.cancel(true));
         emitter.onTimeout(() -> future.cancel(true));
