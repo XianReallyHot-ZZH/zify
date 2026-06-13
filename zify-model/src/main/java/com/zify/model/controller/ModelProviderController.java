@@ -79,7 +79,7 @@ public class ModelProviderController {
 
     @GetMapping("/{id}/api-key")
     public Result<ProviderApiKeyResponse> getProviderApiKey(@PathVariable String id,
-                                                            @RequestParam(defaultValue = "false") boolean reveal) {
+                                                            @RequestParam(value = "reveal", defaultValue = "false") boolean reveal) {
         return Result.ok(providerService.getProviderApiKey(id, reveal));
     }
 }
