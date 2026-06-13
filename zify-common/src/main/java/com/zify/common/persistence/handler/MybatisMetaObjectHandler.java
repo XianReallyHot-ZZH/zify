@@ -16,7 +16,10 @@ public class MybatisMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void insertFill(MetaObject metaObject) {
         LocalDateTime now = LocalDateTime.now();
-        this.strictInsertFill(metaObject, "id", String.class, IdGenerator.uuid());
+        // id 使用 setFieldValByName 而非 strictInsertFill，因为 @TableId 字段可能被 strict 模式跳过
+        if (metaObject.getValue("id") == null) {
+            this.setFieldValByName("id", IdGenerator.uuid(), metaObject);
+        }
         this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, now);
         this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, now);
         this.strictInsertFill(metaObject, "isDeleted", Integer.class, 0);
