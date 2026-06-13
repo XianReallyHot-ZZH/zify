@@ -19,6 +19,16 @@
             <groupId>com.zify</groupId>
             <artifactId>zify-common</artifactId>
         </dependency>
+
+        <!-- Spring AI: 程序化构造 ChatModel（关闭自动配置，版本由父 POM spring-ai-bom 管理） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

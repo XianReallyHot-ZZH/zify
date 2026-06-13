@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -60,6 +61,17 @@ public class AsyncExecutorConfig {
                 WORKFLOW_QUEUE_CAPACITY,
                 "zify-workflow-"
         );
+    }
+
+    /**
+     * LLM 流式对话任务执行器：虚拟线程（每个对话轮次一个虚拟线程）。
+     * <p>
+     * 供 chat 模块提交对话轮次用（glm-docs/07 §3.2）。放在 common 与其余执行器集中，
+     * 便于 chat 注入；禁止在 Controller 中直接 Thread.startVirtualThread()。
+     */
+    @Bean(name = "llmTaskExecutor", destroyMethod = "close")
+    public ExecutorService llmTaskExecutor() {
+        return Executors.newVirtualThreadPerTaskExecutor();
     }
 
     private ThreadPoolExecutor newThreadPoolExecutor(

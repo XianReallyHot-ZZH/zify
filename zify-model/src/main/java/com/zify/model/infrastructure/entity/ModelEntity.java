@@ -26,6 +26,11 @@ public class ModelEntity extends BaseEntity {
     @TableField(value = "default_params", typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> defaultParams;
 
+    /**
+     * 模型上下文窗口大小（token），NULL 时用全局默认值。
+     */
+    private Integer contextWindow;
+
     public String getProviderId() {
         return providerId;
     }
@@ -72,5 +77,13 @@ public class ModelEntity extends BaseEntity {
 
     public void setDefaultParams(Map<String, Object> defaultParams) {
         this.defaultParams = defaultParams;
+    }
+
+    public Integer getContextWindow() {
+        return contextWindow;
+    }
+
+    public void setContextWindow(Integer contextWindow) {
+        this.contextWindow = contextWindow;
     }
 }

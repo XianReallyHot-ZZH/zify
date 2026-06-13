@@ -32,6 +32,7 @@ public final class ModelConverter {
         response.setProviderName(providerName);
         response.setProviderType(providerType);
         response.setProviderStatus(providerStatus);
+        response.setContextWindow(entity.getContextWindow());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
         return response;
@@ -55,6 +56,7 @@ public final class ModelConverter {
         response.setProviderName(providerName);
         response.setProviderType(providerType);
         response.setProviderStatus(providerStatus);
+        response.setContextWindow(entity.getContextWindow());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
         return response;

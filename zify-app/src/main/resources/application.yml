@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: zify
+  threads:
+    virtual:
+      enabled: true
+  autoconfigure:
+    exclude:
+      # Spring AI 的 ChatModel 由 model 模块程序化构造（Provider 配置在 DB），
+      # 排除 starter 按 spring.ai.openai.* / spring.ai.anthropic.* 的自动装配。
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -31,6 +40,12 @@ zify:
     provider-defaults:
       max-concurrent: 20
       acquire-timeout: 2s
+    timeout:
+      chat-stream:
+        connect: 10s
+        first-token: 30s
+        idle: 45s
+        total: 120s
   external-call:
     connect-timeout: 10s
     read-timeout: 60s

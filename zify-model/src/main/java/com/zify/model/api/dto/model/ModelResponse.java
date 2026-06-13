@@ -18,6 +18,10 @@ public class ModelResponse {
     private String providerName;
     private String providerType;
     private String providerStatus;
+    /**
+     * 模型上下文窗口大小（token），可空（NULL 时用全局默认值）。
+     */
+    private Integer contextWindow;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -99,6 +103,14 @@ public class ModelResponse {
 
     public void setProviderStatus(String providerStatus) {
         this.providerStatus = providerStatus;
+    }
+
+    public Integer getContextWindow() {
+        return contextWindow;
+    }
+
+    public void setContextWindow(Integer contextWindow) {
+        this.contextWindow = contextWindow;
     }
 
     public LocalDateTime getCreatedAt() {
