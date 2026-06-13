@@ -64,7 +64,7 @@
 - 不做 Agent 花名册（Roster）系统，一期 Agent 配置直接绑定在实例上
 - 不做 Function Calling 策略，ReAct 已覆盖该场景（循环一轮即结束）
 - 不做多套 Prompt 模板切换和 Prompt 版本管理
-- 不做高级 Prompt 变换（上下文压缩、历史裁剪策略）
+- 上下文管理（对话历史超窗）：**做** 基础尾部截断兜底 + 摘要压缩（running summary，活窗口 + token 预算触发）；**不做** 相关性裁剪、多级摘要、上下文再排序等更复杂策略
 - 不做 Completion App（单轮文本生成）、Advanced Chat、Pipeline App 等 Dify 的其他应用类型
 
 ---

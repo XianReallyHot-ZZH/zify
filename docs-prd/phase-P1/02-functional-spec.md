@@ -42,6 +42,7 @@ model  → common
 | 发送消息 + 流式回复 | ✅ | SSE，可中断 |
 | 消息历史（继续对话） | ✅ | Keyset 分页加载 |
 | 删除会话（级联删除消息） | ✅ | 软删 |
+| 上下文管理（窗口预算 + 摘要压缩） | ✅ | 历史超窗触发摘要压缩 + 尾部截断兜底；单条消息发送时拦截 |
 | ReAct 多轮工具调用循环 | ❌ P2 | P1 为「零工具」单轮 LLM 调用 |
 | 知识库检索增强 | ❌ P3 | — |
 | Workflow Agent | ❌ P4 | 创建表单中该项禁用 |
@@ -284,6 +285,64 @@ public interface TextStreamSink {
 - **首 chunk 前失败且可重试**：model 内部重试，对上层透明。
 - **首 chunk 后失败 / 重试耗尽**：model 抛 `LlmException` → engine 透传 → chat 发 `run_error`，不落库。
 - `SseEmitter` 超时（120s）只是连接兜底，不替代上游 deadline；二者任一触发都取消上游。
+
+---
+
+### 5.5 上下文管理（窗口预算 + 摘要压缩）
+
+每个模型有上下文窗口上限，历史随轮次累积会超窗。P1 采用**三层**处理（数据落点见 `01-data-model.md` 中 `conversation` 的 `summary_text` / `summary_covered_message_id` 列）。
+
+**预算构成**
+
+```
+budget_history = context_window − system − reserved_output(maxTokens) − summary_overhead
+```
+
+- `context_window` 取 `model.context_window`，为 NULL 时用全局默认 `zify.chat.context.default-window`。
+- token 用**近似估算**（字符启发式，留 ~10% buffer），不引入各家 tokenizer（精确化留二期）。
+
+**第一层：摘要压缩（主机制）**
+
+维护会话级 running summary。engine 组装 Prompt 前：
+
+```
+活窗口 = summary_covered_message_id 之后的消息（含本轮 user 输入）
+if estimate(system + summary + 活窗口) > threshold(默认 0.75 × budget_history):
+    取活窗口最旧的 K 条（绝不含本轮 user 输入）
+    用 ModelFacade.chatStream（收集型 sink，不接用户 SSE）生成「旧 summary + K 条」的新摘要
+    推进 summary_covered_message_id，活窗口只留剩余
+```
+
+- 摘要复用该 Agent 的模型；遵守 `glm-docs/07` 超时/重试，**不在事务内**；触发那轮多一次 LLM 调用。
+- 摘要只追加（v1 不编辑/撤回消息，无需失效逻辑）。
+
+**第二层：尾部截断兜底**
+
+压缩后若仍超预算（如某条历史消息极大），从最旧起**直接丢弃**活窗口消息直到塞下——不摘要、纯截断。是 compaction 之外的兜底。
+
+**第三层：单条消息拦截**
+
+发送时（POST 消息）按估算 token 设上限（`zify.chat.context.max-input-tokens`），超限直接返回 `MESSAGE_TOO_LONG`，不让单条粘贴打爆窗口（compaction 救不了单条）。
+
+**最终发给 LLM 的 Prompt**
+
+```
+system_prompt + summary_text + 活窗口 recent messages（本轮 user 输入在末尾）
+```
+
+**数据流（守 `chat → engine` 边界）**
+
+摘要生成在 engine（调 LLM），存储在 chat（conversation 表）。summary 纯经 Facade 入参/出参流转：
+
+```
+ChatTurnCommand { ..., summary, summaryCoveredMessageId }      ← chat 传入当前摘要
+engine 压缩后 → ChatTurnResult { ..., newSummary, newSummaryCoveredMessageId }  ← 仅压缩时非空
+chat 见 newSummary 非空 → 更新 conversation.summary_text / summary_covered_message_id
+```
+
+engine 不碰 conversation 表，chat 不直接调 ModelFacade——与 P1 既定编排边界一致。
+
+**并发**：同一会话同时只允许一次压缩，用 `summary_covered_message_id` 做幂等判定（压缩前读、写回前 CAS）；v1 单副本足够。
 
 ---
 
@@ -555,8 +614,8 @@ AgentConfigDTO getAgentConfig(String agentId);
 ChatTurnResult runChatTurn(ChatTurnCommand command, TextStreamSink sink);
 ```
 
-- `ChatTurnCommand { agentId, history: List<ChatMessage>, assistantMessageId }`（`ChatMessage` 在 engine `api/dto`：`{ role, content }`）。
-- 行为：`AgentFacade.getAgentConfig` → 组装 system + history → `ModelFacade.chatStream` → token 经 `sink` 回调 → 返回 `ChatTurnResult { content, finishReason, usage }`。
+- `ChatTurnCommand { agentId, history: List<ChatMessage>, assistantMessageId, summary, summaryCoveredMessageId }`（`ChatMessage` 在 engine `api/dto`：`{ role, content }`；`summary` / `summaryCoveredMessageId` 可空，为当前会话 running summary）。
+- 行为：`AgentFacade.getAgentConfig` → **上下文管理（必要时摘要压缩，见 §5.5）** → 组装 system + summary + 活窗口 → `ModelFacade.chatStream` → token 经 `sink` 回调 → 返回 `ChatTurnResult { content, finishReason, usage, newSummary, newSummaryCoveredMessageId }`（`newSummary` / `newSummaryCoveredMessageId` 仅当本轮触发压缩时非空，chat 据此更新 conversation）。
 - **不读写 conversation/message 表**；失败抛异常，由 chat 决定如何发 `run_error`。
 - 中断：`Future.cancel(true)` 透传到 model。
 
@@ -609,6 +668,19 @@ chat (持久化/HTTP/SSE)
 | S-05 | 重试耗尽 / 不可重试错误 → 发 `run_error`，不落库 ASSISTANT |
 | S-06 | API Key 全链路不记录、不返回、不入异常 |
 
+### 10.4 上下文管理规则
+
+| 编号 | 规则 |
+|------|------|
+| X-01 | 历史预算 = `context_window − system − 预留输出 − summary 开销`；`context_window` 取 `model.context_window`，为空用全局默认 |
+| X-02 | token 用近似估算，不引入各家 tokenizer |
+| X-03 | 超阈值触发摘要压缩：折叠最旧活窗口消息到 running summary，**绝不压缩本轮 user 输入** |
+| X-04 | 摘要复用 Agent 模型；不在事务内；触发轮多一次 LLM 调用 |
+| X-05 | 压缩后仍超预算 → 尾部截断兜底（直接丢最旧，不摘要） |
+| X-06 | 单条消息超 `max-input-tokens` → 发送时拒绝（`MESSAGE_TOO_LONG`） |
+| X-07 | 摘要只在 engine 生成、chat 落库；经 Facade 入参/出参流转，engine 不碰 conversation 表 |
+| X-08 | 同一会话同时只允许一次压缩，用 `summary_covered_message_id` 幂等 |
+
 ---
 
 ## 十一、配置项（application.yml 增量）
@@ -628,6 +700,14 @@ zify:
         idle: 45s
         total: 120s
     # provider-defaults.max-concurrent / acquire-timeout 已存在
+
+  chat:                     # 新增：上下文管理（摘要压缩，见 §5.5）
+    context:
+      default-window: 128000        # model.context_window 为空时的兜底窗口（token）
+      budget-threshold: 0.75        # 触发摘要压缩的预算占比
+      compaction-batch: 6           # 单次压缩折叠的消息条数
+      max-input-tokens: 30000       # 单条用户消息上限（估算 token），超则拒绝
+      summary-overhead-tokens: 2000 # 为 summary 预留的预算
 ```
 
 model 模块新增一个虚拟线程执行器 Bean（`llmTaskExecutor`，`Executors.newVirtualThreadPerTaskExecutor()`），供 `chatStream` 任务使用；禁止在 Controller 直接 `Thread.startVirtualThread()`（07 §3.2）。
@@ -648,6 +728,7 @@ model 模块新增一个虚拟线程执行器 Bean（`llmTaskExecutor`，`Execut
 | `CONVERSATION_NOT_ACTIVE`（新增） | 会话非 ACTIVE | 发消息 |
 | `MESSAGE_CONTENT_EMPTY`（新增） | 消息内容为空 | 发消息 |
 | `CHAT_TURN_FAILED`（新增） | 对话生成失败（LLM 错误的兜底） | engine/model 异常 |
+| `MESSAGE_TOO_LONG`（新增） | 单条消息超过上下文上限 | 发消息（发送时拦截，见 §5.5 第三层） |
 
 > SSE 流内的失败不抛 HTTP 异常，而是发 `run_error` 事件（见 §5.2）；非流式接口（如发消息前的校验）走标准 `BusinessException`。
 
@@ -662,6 +743,7 @@ model 模块新增一个虚拟线程执行器 Bean（`llmTaskExecutor`，`Execut
 | no-op Facade | `12` P1：定义 Tool/Knowledge/Workflow Facade no-op | P1 不调用这三模块，**推迟到 P2/P3/P4** 首次消费时建 | 精简路线图 P1「接口先行」一条；pom 依赖已就位，不影响编译 |
 | 默认路由 | `router.tsx` 现状：`/`=HomePage、`/chat`=ChatPage | `/`=ChatPage（对齐 `03`） | P1 调整 router，移除 HomePage |
 | `CursorPageResult` 字段 | 后端暴露 `nextCursorId`+`nextCursorCreatedAt` | Controller 编码为 opaque `nextCursor` 对齐前端 | 在 Controller 层做编解码，不改 common 类 |
+| 上下文压缩策略 | `02` §1 原排除「上下文压缩、历史裁剪」 | P1 纳入摘要压缩 + 尾部截断兜底 | **已更新 `02` §1 边界**（基础截断/摘要压缩「做」，相关性裁剪/多级摘要「不做」） |
 
 ---
 
