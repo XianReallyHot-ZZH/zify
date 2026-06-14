@@ -3,7 +3,9 @@ package com.zify.model.infrastructure.client;
 import com.openai.client.OpenAIClient;
 import com.openai.client.OpenAIClientImpl;
 import com.openai.core.ClientOptions;
+import com.openai.credential.BearerTokenCredential;
 import com.zify.model.domain.ProviderType;
+import com.zify.model.infrastructure.client.exception.LlmNonRetryableException;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -41,9 +43,15 @@ public class OpenAiChatClient extends AbstractSpringAiChatClient {
                 .baseUrl(ctx.getBaseUrl())
                 .httpClient(httpClient)
                 .timeout(total);
-        if (ctx.getApiKey() != null && !ctx.getApiKey().isBlank()) {
-            builder.apiKey(ctx.getApiKey());
+        String apiKey = ctx.getApiKey();
+        if (apiKey == null || apiKey.isBlank()) {
+            // apiKey 缺失：给明确错误，而非让 SDK 抛模糊的 "credential source must be specified"
+            throw new LlmNonRetryableException("provider has no apiKey; configure it in model management",
+                    ctx.getProviderId(), ctx.getModelName(), ctx.getScenario());
         }
+        // OpenAIClientImpl 构造时需要一个 credential 对象；OpenAI/兼容的 apiKey 本质是 Bearer token。
+        // 同时设 apiKey 与 credential(BearerTokenCredential) 双保险。
+        builder.apiKey(apiKey).credential(BearerTokenCredential.create(apiKey));
         OpenAIClient client = new OpenAIClientImpl(builder.build());
 
         OpenAiChatModel.Builder modelBuilder = OpenAiChatModel.builder().openAiClient(client);
