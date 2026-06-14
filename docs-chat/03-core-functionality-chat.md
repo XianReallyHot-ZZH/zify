@@ -63,7 +63,8 @@ Zify 项目工程骨架已经搭好（Maven 多模块、zify-common 的 Result /
 - 覆盖文档中所有功能，提示词与功能自洽，没有遗漏
 如果期间涉及到关键技术选型、关键决策，向我提问，并提供方案与建议，我来最终确认。 最终文档放置到 @docs-prompt\ 路径下。
 
-
+## 执行
+根据 @docs-prompt\prompt-04-core-conversation-loop.md 文档, 逐个执行任务, 每个任务执行完成无误后进行一次 commit，直到完成所有任务。
 
 
 

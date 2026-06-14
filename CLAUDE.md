@@ -233,3 +233,22 @@ LLM（→ `glm-docs/07`）：
 | `glm-docs/10-zify-database-spec.md` | 完整数据库规范（字段类型、索引、分页、JSON、事务、建表模板、实例配置） |
 | `glm-docs/11-zify-core-data-model.md` | 核心数据模型（21 张表和关系） |
 | `glm-docs/12-zify-development-roadmap.md` | 一期开发路线图（阶段拆解、顺序编排、每阶段功能与边界） |
+
+---
+
+## §12 本地环境
+
+### maven
+
+本地 Maven 版本是 Apache Maven 3.9.6。 
+路径：D:\Developer\JavaSoftWare\apache-maven-3.9.6-bin\apache-maven-3.9.6。 
+配置的 Maven 本地仓库路径是：D:\Developer\JavaSoftWare\apache-maven-3.9.6-bin\repository。
+
+### redis
+
+本地 redis 安装路径：D:\Developer\DeveloperInstall\Redis\Redis-7.4.9\Redis-7.4.9-Windows-x64-cygwin-with-Service
+
+### mysql
+
+本地 mysql 安装路径：D:\Developer\DeveloperInstall\MySQL\MySQL8\Install\MySQL Server 8.0
+
