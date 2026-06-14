@@ -1,6 +1,8 @@
 package com.zify.model.infrastructure.client;
 
 import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientAsync;
+import com.openai.client.OpenAIClientAsyncImpl;
 import com.openai.client.OpenAIClientImpl;
 import com.openai.core.ClientOptions;
 import com.openai.credential.BearerTokenCredential;
@@ -52,9 +54,17 @@ public class OpenAiChatClient extends AbstractSpringAiChatClient {
         // OpenAIClientImpl 构造时需要一个 credential 对象；OpenAI/兼容的 apiKey 本质是 Bearer token。
         // 同时设 apiKey 与 credential(BearerTokenCredential) 双保险。
         builder.apiKey(apiKey).credential(BearerTokenCredential.create(apiKey));
-        OpenAIClient client = new OpenAIClientImpl(builder.build());
+        ClientOptions options = builder.build();
 
-        OpenAiChatModel.Builder modelBuilder = OpenAiChatModel.builder().openAiClient(client);
+        // OpenAiChatModel 的流式调用走 async client：必须同时提供 openAiClientAsync，
+        // 否则 Builder.build() 会调 OpenAiSetup.setupAsyncClient 自建（需要 spring.ai.* 凭证）→
+        // 抛 "At least one credential source must be specified"。同一个 ClientOptions 构造 sync + async。
+        OpenAIClient syncClient = new OpenAIClientImpl(options);
+        OpenAIClientAsync asyncClient = new OpenAIClientAsyncImpl(options);
+
+        OpenAiChatModel.Builder modelBuilder = OpenAiChatModel.builder()
+                .openAiClient(syncClient)
+                .openAiClientAsync(asyncClient);
         if (chatOptions instanceof OpenAiChatOptions openAiOptions) {
             modelBuilder.options(openAiOptions);
         }

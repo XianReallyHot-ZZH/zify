@@ -1,6 +1,7 @@
 package com.zify.model.infrastructure.client;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.client.AnthropicClientAsync;
 import com.zify.model.domain.ProviderType;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
@@ -56,16 +57,15 @@ public class AnthropicChatClient extends AbstractSpringAiChatClient {
         Map<String, String> headers = new HashMap<>();
         headers.put("anthropic-version", resolveApiVersion(ctx));
 
-        AnthropicClient client = AnthropicSetup.setupSyncClient(
-                ctx.getBaseUrl(),
-                ctx.getApiKey(),
-                total,
-                0,
-                null,
-                headers
-        );
+        // 流式需要 async client，同时提供 sync + async（同参数），避免 Builder.build() 自建
+        AnthropicClient syncClient = AnthropicSetup.setupSyncClient(
+                ctx.getBaseUrl(), ctx.getApiKey(), total, 0, null, headers);
+        AnthropicClientAsync asyncClient = AnthropicSetup.setupAsyncClient(
+                ctx.getBaseUrl(), ctx.getApiKey(), total, 0, null, headers);
 
-        AnthropicChatModel.Builder modelBuilder = AnthropicChatModel.builder().anthropicClient(client);
+        AnthropicChatModel.Builder modelBuilder = AnthropicChatModel.builder()
+                .anthropicClient(syncClient)
+                .anthropicClientAsync(asyncClient);
         if (chatOptions instanceof AnthropicChatOptions anthropicOptions) {
             modelBuilder.options(anthropicOptions);
         }
