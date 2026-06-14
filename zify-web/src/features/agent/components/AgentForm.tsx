@@ -77,37 +77,32 @@ function AgentForm({ initialAgent, onSubmit, onCancel }: AgentFormProps) {
     >
       <Steps current={current} size="small" style={{ marginBottom: 24 }} items={STEPS.map((s) => ({ title: s.title }))} />
 
-      {/* Step 1 基础信息 */}
-      {current === 0 && (
-        <>
-          <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入 Agent 名称' }]}>
-            <Input maxLength={128} placeholder="如：客服助手" />
-          </Form.Item>
-          <Form.Item label="描述" name="description">
-            <Input maxLength={512} placeholder="Agent 用途说明" />
-          </Form.Item>
-          <Form.Item label="类型" name="agentType" rules={[{ required: true, message: '请选择类型' }]}>
-            <AgentTypeSelector disabled={isEdit} />
-          </Form.Item>
-        </>
-      )}
+      {/* 各步 Form.Item 常驻挂载，用 display 切换显隐，避免条件渲染卸载导致字段丢失 */}
+      <div style={{ display: current === 0 ? 'block' : 'none' }}>
+        <Form.Item label="名称" name="name" rules={[{ required: true, message: '请输入 Agent 名称' }]}>
+          <Input maxLength={128} placeholder="如：客服助手" />
+        </Form.Item>
+        <Form.Item label="描述" name="description">
+          <Input maxLength={512} placeholder="Agent 用途说明" />
+        </Form.Item>
+        <Form.Item label="类型" name="agentType" rules={[{ required: true, message: '请选择类型' }]}>
+          <AgentTypeSelector disabled={isEdit} />
+        </Form.Item>
+      </div>
 
-      {/* Step 2 人设 */}
-      {current === 1 && (
+      <div style={{ display: current === 1 ? 'block' : 'none' }}>
         <Form.Item label="System Prompt" name="systemPrompt">
           <PromptEditor />
         </Form.Item>
-      )}
+      </div>
 
-      {/* Step 3 能力 */}
-      {current === 2 && (
+      <div style={{ display: current === 2 ? 'block' : 'none' }}>
         <Form.Item label="绑定模型" name="modelId" rules={[{ required: true, message: '请选择可用 LLM 模型' }]}>
           <ModelSelector />
         </Form.Item>
-      )}
+      </div>
 
-      {/* Step 4 确认 */}
-      {current === 3 && (
+      <div style={{ display: current === 3 ? 'block' : 'none' }}>
         <Form.Item shouldUpdate>
           {() => {
             const v = form.getFieldsValue(true)
@@ -124,7 +119,7 @@ function AgentForm({ initialAgent, onSubmit, onCancel }: AgentFormProps) {
             )
           }}
         </Form.Item>
-      )}
+      </div>
 
       {/* 操作按钮 */}
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between' }}>
