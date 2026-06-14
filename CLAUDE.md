@@ -233,6 +233,7 @@ LLM（→ `glm-docs/07`）：
 | `glm-docs/10-zify-database-spec.md` | 完整数据库规范（字段类型、索引、分页、JSON、事务、建表模板、实例配置） |
 | `glm-docs/11-zify-core-data-model.md` | 核心数据模型（21 张表和关系） |
 | `glm-docs/12-zify-development-roadmap.md` | 一期开发路线图（阶段拆解、顺序编排、每阶段功能与边界） |
+| `glm-docs/13-zify-tool-calling-spec.md` | 工具调用技术方案（HTTP/MCP 工具：模块边界、线程、超时、重试、熔断、安全、MCP/HTTP 实现） |
 
 ---
 

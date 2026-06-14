@@ -20,7 +20,7 @@
 - MCP Server 调用。
 - 工作流 HTTP Request 节点调用。
 
-这些外部 HTTP 调用后续按类似原则单独定义。
+这些外部 HTTP 调用按类似原则单独定义于 `glm-docs/13-zify-tool-calling-spec.md`（P2 B1）。
 
 ---
 
