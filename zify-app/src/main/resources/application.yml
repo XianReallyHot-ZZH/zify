@@ -9,9 +9,15 @@ spring:
       enabled: true
   autoconfigure:
     exclude:
-      # Spring AI 的 ChatModel 由 model 模块程序化构造（Provider 配置在 DB），
-      # 排除 starter 按 spring.ai.openai.* / spring.ai.anthropic.* 的自动装配。
+      # Spring AI 的所有模型由 model 模块程序化构造（Provider 配置在 DB），
+      # 排除 starter 按 spring.ai.openai.* / spring.ai.anthropic.* 自动装配各模型 Bean
+      # （ChatModel / Embedding / Image / Audio / Moderation 均需 apiKey，DB 配置下不能让 starter 自动建）。
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
       - org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration
   flyway:
     enabled: true
