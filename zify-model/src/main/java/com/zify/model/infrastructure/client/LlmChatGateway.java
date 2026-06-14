@@ -146,6 +146,10 @@ public class LlmChatGateway {
     }
 
     private ChatOptions mergeOptions(ChatOptions commandOptions, Map<String, Object> defaults) {
+        // model.default_params 可空（创建模型时不填），按无默认值处理
+        if (defaults == null) {
+            defaults = Map.of();
+        }
         ChatOptions merged = new ChatOptions();
         merged.setTemperature(firstNonNull(asDouble(commandOptions, ChatOptions::getTemperature),
                 asDouble(defaults.get("temperature"))));
