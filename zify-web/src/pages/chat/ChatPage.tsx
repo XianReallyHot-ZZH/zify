@@ -30,6 +30,14 @@ export default function ChatPage() {
     setCurrentConversation(conversation.id)
   }
 
+  // 删除的是当前会话 → 清空右栏
+  function handleDeleted(id: string) {
+    if (id === active?.id) {
+      setActive(null)
+      setCurrentConversation(null)
+    }
+  }
+
   async function handleCreate(agent: AgentResponse) {
     setSelectorOpen(false)
     try {
@@ -48,6 +56,7 @@ export default function ChatPage() {
         activeId={active?.id}
         onSelect={handleSelect}
         onNew={() => setSelectorOpen(true)}
+        onDeleted={handleDeleted}
         refreshSignal={sidebarSignal}
       />
       <ChatPanel conversation={active} />

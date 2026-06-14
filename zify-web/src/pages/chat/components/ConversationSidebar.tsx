@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Input, Spin } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { Button, Input, Popconfirm, Spin, message } from 'antd'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { useCursorPagination } from '../../../shared/hooks/useCursorPagination'
-import { listConversations } from '../../../api/chatApi'
+import { deleteConversation, listConversations } from '../../../api/chatApi'
+import { ApiError } from '../../../api/request'
 import type { ConversationSummaryResponse } from '../../../types/chat'
 
 type ConversationSidebarProps = {
   activeId?: string
   onSelect: (conversation: ConversationSummaryResponse) => void
   onNew: () => void
+  /** 删除成功后回调（删的是当前会话时父组件据此清空右栏） */
+  onDeleted?: (id: string) => void
   refreshSignal: number
 }
 
@@ -17,9 +20,9 @@ function formatTime(iso: string): string {
 }
 
 /**
- * 左栏：会话列表（按 lastMessageAt 倒序 Keyset），新建对话，搜索。
+ * 左栏：会话列表（按 lastMessageAt 倒序 Keyset），新建对话，搜索，删除会话。
  */
-function ConversationSidebar({ activeId, onSelect, onNew, refreshSignal }: ConversationSidebarProps) {
+function ConversationSidebar({ activeId, onSelect, onNew, onDeleted, refreshSignal }: ConversationSidebarProps) {
   const [title, setTitle] = useState('')
 
   const fetchFn = useCallback(
@@ -31,6 +34,17 @@ function ConversationSidebar({ activeId, onSelect, onNew, refreshSignal }: Conve
   useEffect(() => {
     refresh()
   }, [refresh, refreshSignal])
+
+  async function handleDelete(c: ConversationSummaryResponse) {
+    try {
+      await deleteConversation(c.id)
+      message.success('会话已删除')
+      onDeleted?.(c.id)
+      refresh()
+    } catch (err) {
+      message.error(err instanceof ApiError ? err.message : '删除失败')
+    }
+  }
 
   return (
     <div
@@ -69,14 +83,38 @@ function ConversationSidebar({ activeId, onSelect, onNew, refreshSignal }: Conve
                   cursor: 'pointer',
                   background: c.id === activeId ? '#e6f4ff' : 'transparent',
                   borderBottom: '1px solid #f5f5f5',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 8,
                 }}
               >
-                <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {c.title}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {c.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#999' }}>
+                    {c.agentName || '—'} · {c.messageCount} 条 · {formatTime(c.lastMessageAt)}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: '#999' }}>
-                  {c.agentName || '—'} · {c.messageCount} 条 · {formatTime(c.lastMessageAt)}
-                </div>
+                <Popconfirm
+                  title="删除该会话？"
+                  description="会话及其全部消息将被删除"
+                  okText="删除"
+                  okButtonProps={{ danger: true }}
+                  cancelText="取消"
+                  onConfirm={() => handleDelete(c)}
+                >
+                  <Button
+                    size="small"
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </Popconfirm>
               </div>
             ))
           )}
