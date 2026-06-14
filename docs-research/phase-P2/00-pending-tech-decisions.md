@@ -28,18 +28,18 @@
 | 编号 | 标题 | 档位 | 优先级 | 状态 | 建议顺序 | 前置依赖 |
 |------|------|------|--------|------|----------|----------|
 | **P2-A1** | ReAct 循环实现机制（Spring AI Tool Calling vs 手动编排） | 架构级 | 🔴 | ✅ | 1 | — |
-| **P2-A2** | 工具调用结果持久化与上下文重建（含 tool_call_log 归属） | 架构级 | 🟠 | ⬜ | 3 | A1 |
-| **P2-B1** | HTTP/MCP 工具调用的超时/重试/容错规范 | 规范级 | 🟠 | ⬜ | 4 | — |
+| **P2-A2** | 工具调用结果持久化与上下文重建（含 tool_call_log 归属） | 架构级 | 🟠 | ✅ | 3 | A1 |
+| **P2-B1** | HTTP/MCP 工具调用的超时/重试/容错规范 | 规范级 | 🟠 | ✅ | 4 | — |
 | **P2-B2** | 统一 Tool 接口输入输出契约 + ToolFacade DTO + Schema 下发 | 规范级 | 🟠 | ✅ | 2 | A1 |
-| **P2-C1** | MCP Client 传输方式范围 + 是否采用 spring-ai-mcp | 实现级 | 🟡 | ⬜ | 6 | B1, B2 |
-| **P2-C2** | MCP 连接生命周期（常驻/按需、发现时机、断连重连） | 实现级 | 🟡 | ⬜ | 7 | C1 |
-| **P2-C3** | HTTP 工具 OpenAPI 解析范围 + 鉴权凭据加密 | 实现级 | 🟡 | ⬜ | 8 | B1, B2 |
-| **P2-C4** | ReAct 循环控制（终止/最大轮次/中断/死循环兜底） | 实现级 | 🟡 | ⬜ | 9 | A1 |
-| **P2-C5** | 多轮 + SSE 事件协议扩展（在 P1 协议上加工具事件） | 实现级 | 🟠 | ⬜ | 5 | A1, A2 |
-| **P2-C6** | 并行工具调用 + 线程模型（不阻塞 reactive 流） | 实现级 | 🟡 | ⬜ | 10 | A1, B1 |
-| **P2-C7** | 工具安全（SSRF 防护、请求/响应大小限制） | 实现级 | 🟡 | ⬜ | 11 | — |
-| **P2-D1** | `tool_call_log`(19) 大表字段与存储策略 | 数据级 | 🟡 | ⬜ | 12 | A2 |
-| **P2-D2** | 工具生命周期与运行时校验（禁用/断连/命名冲突） | 数据级 | 🟡 | ⬜ | 13 | B2 |
+| **P2-C1** | MCP Client 传输方式范围 + 是否采用 spring-ai-mcp | 实现级 | 🟡 | ✅ | 6 | B1, B2 |
+| **P2-C2** | MCP 连接生命周期（常驻/按需、发现时机、断连重连） | 实现级 | 🟡 | ✅ | 7 | C1 |
+| **P2-C3** | HTTP 工具 OpenAPI 解析范围 + 鉴权凭据加密 | 实现级 | 🟡 | ✅ | 8 | B1, B2 |
+| **P2-C4** | ReAct 循环控制（终止/最大轮次/中断/死循环兜底） | 实现级 | 🟡 | ✅ | 9 | A1 |
+| **P2-C5** | 多轮 + SSE 事件协议扩展（在 P1 协议上加工具事件） | 实现级 | 🟠 | ✅ | 5 | A1, A2 |
+| **P2-C6** | 并行工具调用 + 线程模型（不阻塞 reactive 流） | 实现级 | 🟡 | ✅ | 10 | A1, B1 |
+| **P2-C7** | 工具安全（SSRF 防护、请求/响应大小限制） | 实现级 | 🟡 | ✅ | 11 | — |
+| **P2-D1** | `tool_call_log`(19) 大表字段与存储策略 | 数据级 | 🟡 | ✅ | 12 | A2 |
+| **P2-D2** | 工具生命周期与运行时校验（禁用/断连/命名冲突） | 数据级 | 🟡 | ✅ | 13 | B2 |
 
 ---
 
@@ -155,7 +155,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟠 前置必要 |
 | 前置依赖 | A1 |
 
@@ -176,13 +176,42 @@
 
 **关联文档**：`docs-prd/phase-P1/02` §2.1、§4.5、§5.5（上下文管理）、`01-data-model.md`（message 表）。
 
-**决策结果**：⬜ 待回填
-> - 决定（含 tool_call_log 归属）：
-> - message 表是否扩展：
-> - 对 P1 §2.1 边界的处理：
-> - 理由：
-> - 需回写的正式文档：
-> - 决策日期：
+**决策结果**：✅ 已决（2026-06-14）
+> **决定 1 — `tool_call_log` 归 tool 模块**（修订 `glm-docs/11`：engine→tool）：写入点 = `ToolFacade.executeTool` 内部（执行点即记录点）。
+> - 理由：tool_call_log 须同时服务对话（engine 经 ToolFacade）与工作流（workflow 经 ToolFacade，P4）；**唯一能被两者依赖的是 tool 模块**（`engine→tool`、`workflow→tool` 均允许）。归 engine 则工作流场景无人能写（workflow 不依赖 engine，依赖图无 engine）。
+> - 澄清：glm-docs/11 §五「可由对话引擎或工作流触发」**保留正确**——触发方≠归属模块。
+> - 上下文：`conversation_id`（对话场景）/ `workflow_run_id`（工作流，P4）由 `ToolExecContext`（B2）传入，皆 nullable。
+>
+> **决定 2 — 工具过程进 message 表**（方案 X）：ASSISTANT toolCall 请求 + TOOL 响应都落 message 表。
+> - 硬要求：模型继续对话时 Spring AI 需之前的 `AssistantMessage(toolCalls)`+`ToolResponseMessage` 才能理解多轮工具上下文；只存最终 ASSISTANT 会让上下文断裂。
+> - P1 message 表 role 已预留 TOOL，**无需改列**；扩展 `metadata` JSON：
+>   - `ASSISTANT`(toolCall)：增 `toolCalls:[{id,name,args(JSON)}]`；
+>   - `TOOL`：`content`=工具结果 output，metadata=`{toolCallId,toolName,toolCallLogId}`；
+>   - 最终 ASSISTANT 文本：metadata 不变（modelId/tokens/finishReason）。
+> - 职责分离：message=对话流（前端+上下文重建），tool_call_log=详细执行日志（调试），经 `toolCallLogId` 关联。
+>
+> **决定 3 — engine 保持纯编排**（P1 §2.1 **不改**）：engine 不碰任何 DB（message/conversation 归 chat，tool_call_log 归 tool）。三处写入点清晰互不越界。
+> - `ChatTurnResult` 扩展：从「单 content」→ 返回本轮新增消息序列 `List<ChatMessage> newMessages`（ASSISTANT toolCall + TOOL + 最终 ASSISTANT）；`content` 保留（=最终文本，供 SSE `done`）。
+> - `persistAssistantTurn`(单条) → `persistTurn`(批量落库本轮序列，短事务、事务内只 DB 写)。
+> - message 表是否扩展：**不新增列**，仅扩 `metadata` JSON 结构（见决定 2）。
+>
+> **决定 4 — 摘要压缩以 turn 为单位**（扩展 P1 §5.5）：
+> - turn = 1 USER + 其后所有 ASSISTANT/TOOL（到下一 USER）。
+> - 摘要折叠 / 尾部截断**以 turn 为整体**，绝不拆散工具消息序列（否则模型丢失 toolCall↔response 配对）。
+> - `loadActiveWindow` 扩展：`role IN (USER, ASSISTANT, TOOL)`，按 turn 重建。（对照 Spring AI 2.0 RC1 `MessageWindowChatMemory` 的 turn-boundary snapping，Zify 自管上下文自行保证。）
+>
+> **决定 5 — `tool_call_log` ↔ TOOL message 关联**：TOOL message `metadata.toolCallLogId` 指向 tool_call_log 主键，前端可下钻查看详细输入/输出/耗时/状态（C5 的 `tool_call_end` 事件同带此 id）。
+>
+> **解决 P1 §2.1 张力**：原张力（路线图「engine 写 tool_call_log」vs P1 §2.1「engine 不碰 DB」）由「tool_call_log 归 tool 模块、tool 写」彻底化解——engine 仍是纯编排，**P1 §2.1 无需修订**。
+>
+> **连带影响 / 需回写**：
+> 1. `glm-docs/11` §一/§四表 19：tool_call_log 归属 **engine→tool**；§二/§三关系 `message 1:N tool_call_log` → `message(TOOL) 0..1:1 tool_call_log`（经 metadata 关联）；§五归属澄清。
+> 2. P1 `01-data-model` §四 `message.metadata`：JSON 结构扩展（toolCalls/toolCallId/toolCallLogId）。
+> 3. P1 `02-functional-spec` §5.5：摘要压缩 turn 边界语义；§2.1 保持。
+> 4. `ChatTurnCommand/Result`、`ChatStreamService.runTurn`、`MessageService.persistAssistantTurn`→`persistTurn`、`loadActiveWindow` 扩展。
+> 5. D1：tool_call_log 增 `conversation_id`/`workflow_run_id`（nullable）+ `tool_call_id`（关联 TOOL message）。
+>
+> **决策日期**：2026-06-14
 
 ---
 
@@ -194,7 +223,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟠 前置必要 |
 | 前置依赖 | — |
 
@@ -210,11 +239,51 @@
 
 **关联文档**：`glm-docs/07` 全文（参照其结构）、`CLAUDE.md` §6 §9。
 
-**决策结果**：⬜ 待回填
-> - 决定（超时/重试/熔断取值与策略）：
-> - 工具失败在 ReAct 循环中的处理：
-> - 规范落点（新文档 / 扩写 07）：
-> - 决策日期：
+**决策结果**：✅ 已决（2026-06-14）
+> **核心差异**：工具调用与 LLM 的根本区别在**幂等性**——LLM 天然幂等可自由重试，工具多数非幂等（POST/写操作）重试会重复副作用。B1 全部策略围绕此展开。
+>
+> **超时（分层 + 可配）**：
+> | 类型 | 默认 | 说明 |
+> |---|---|---|
+> | 连接超时 | 10s | TCP/TLS 建连；MCP 含 initialize 握手 15s |
+> | 单次请求超时 | 30s | 单次 HTTP 完整请求+读取；**工具定义 `timeout_seconds` 可覆盖** |
+> | 总 deadline | ≤60s | 含重试；且不超过 ReAct 循环剩余时间（衔接 C4） |
+> - YAML：`zify.tool.timeout.{connect:10s, mcp-handshake:15s, request-default:30s, total-cap:60s}`。
+>
+> **重试（幂等性驱动，显式 wrapper，不用 `@Retryable`）**：
+> | 失败时机 | 幂等工具(GET/HEAD 或声明 idempotent) | 非幂等工具(POST/PUT/DELETE/PATCH 默认) |
+> |---|---|---|
+> | 建连失败（连接超时/被拒） | ✅可重试 | ✅**可重试**（请求未送达，无副作用） |
+> | 请求已发出后失败（读超时/5xx/429） | ✅可重试 | ❌**不重试**（不确定是否已执行） |
+> | 4xx（参数/认证/404） | ❌不重试 | ❌不重试 |
+> | 熔断中 | ❌直接失败 | ❌直接失败 |
+> - 参数对齐 07 §5.3（max 2 次、退避倍率 2、jitter 20%、遵守总 deadline）。
+> - **tool 表新增 `idempotent` 字段**：HTTP 按 method 推断默认（GET=true, POST=false），用户可覆盖；MCP 默认 false，用户显式声明。（D1 落字段）
+>
+> **熔断（per `tool_id`）**：对齐 07 §6.2 进程内轻量熔断，键改 `tool_id`。连续 5 次可重试失败 → OPEN 60s → HALF_OPEN 探测 1 次；4xx 不计入。熔断中该工具本轮不可用。
+>
+> **并发保护（原则，线程池细节归 C6）**：全局有界工具执行线程池（虚拟线程/有界 ThreadPoolExecutor）；一期先全局池，per-tool 并发上限留二期。
+>
+> **失败回灌（衔接 B2，`ToolFacade.executeTool` 返回 status=ERROR 不抛）**：
+> | 失败类型 | output（回灌模型） |
+> |---|---|
+> | 可重试故障重试耗尽 | `工具 <name> 暂时不可用，请稍后重试或换一种方式` |
+> | 参数/认证错误(4xx) | `调用工具 <name> 失败：<精简错误>` |
+> | 熔断中 | `工具 <name> 当前不可用` |
+> | 非幂等执行失败 | `工具 <name> 执行失败：<精简错误>` |
+> - 模型据此自主决策（换工具/改参数/直接回答），**不中断 ReAct 循环**（致命错误除外，C4 定）。
+>
+> **异常/HTTP client**：HTTP 工具用 RestClient（同步，对齐 07 §3.1）；MCP 用 spring-ai-mcp-client（C1 定）。tool 模块 `infrastructure/` 定义 `ToolException` 体系（Retryable/NonRetryable/Timeout/Busy/CircuitOpen），**对 engine 只暴露 DTO**（B2 中立边界），异常内部消化成 status=ERROR。
+>
+> **规范落点**：新建 `glm-docs/13-zify-tool-calling-spec.md`（07 §一已声明工具调用单独定义；幂等性使重试逻辑与 LLM 根本不同，单独成篇）。07 保持 LLM 专注。
+>
+> **连带影响**：
+> 1. `glm-docs/13` 新建（按 07 结构：超时/重试/熔断/异常/日志）。
+> 2. tool 表新增 `timeout_seconds`/`idempotent` 字段（D1）。
+> 3. C1–C3 实现遵循本规范；C6 定线程池细节；C4 定循环总 deadline 与单工具超时的衔接。
+> 4. CLAUDE.md §10 检查清单「外部调用有超时」项适用于工具调用。
+>
+> **决策日期**：2026-06-14
 
 ---
 
@@ -290,6 +359,10 @@
 > **需回写的正式文档**：P2 `01-data-model.md`（tool/agent_tool 表）、`02-functional-spec.md`（ToolFacade 契约 + 三模块分工图）。
 >
 > **决策日期**：2026-06-14
+>
+> ---
+>
+> **⚠️ 精度修正（C1 落地后补，2026-06-14）**：本决策「tool 模块中立（pom 不加 spring-ai）」需精确为「**接口中立**」——`ToolFacade`/`Tool` 接口不含 spring-ai 的 **LLM 抽象**类型（`ChatModel`/`ToolCallback`/`ChatResponse`），但 tool 模块 **infrastructure 层**可用 `spring-ai-mcp-client`（MCP 协议实现，核心类型 `McpClient`/`McpSchema.Tool`，非 LLM 抽象，与 HTTP 工具用 RestClient 同性质）。上方表中「完全中立（pom 不加 spring-ai）」据此理解为「接口零 spring-ai LLM 抽象」。核心不变：Tool 不实现 `ToolCallback`、engine 不碰 spring-ai tool 类型。详见下文 P2-C1 决策。
 
 ---
 
@@ -301,7 +374,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | B1, B2 |
 
@@ -312,7 +385,28 @@
 
 **关联文档**：`glm-docs/02` §3、`glm-docs/12` §五、`glm-docs/07` §3.1（客户端选型一致性）。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-14）
+> **决定 1 — 传输范围：只做 Streamable-HTTP + SSE，不做 stdio**。
+> - Zify 是 Web 服务（Docker/K8s），stdio 需启动 Server 子进程 + 管理进程生命周期，一期复杂、部署不优雅；远程 Server 用 HTTP/SSE 是主流（Streamable-HTTP 是 SSE 的现代替代）。
+> - 用 `spring-ai-starter-mcp-client`（HttpClient 版，激活 HTTP/SSE + Streamable-HTTP）。
+>
+> **决定 2 — MCP 客户端：用 spring-ai-mcp-client，关闭 ToolCallback auto-config**。
+> - `McpClient`（**SYNC**，对齐 07 §3.1 同步风格）做连接/发现/调用。
+> - `spring.ai.mcp.client.toolcallback.enabled=false`（不用 starter 把 MCP 工具包成 `ToolCallback` 注册给 ChatClient——B2 决策 Zify 不用 ChatClient/ToolCallback）。
+> - tool 模块自己适配：`McpClient.listTools()` → `ToolViewDTO`（inputSchema 取 `McpSchema.Tool.inputSchema()`）；`McpClient.callTool(name, args)` → `ToolExecutionResultDTO`。
+> - `requestTimeout` 30s（`McpClient.SyncSpec.requestTimeout`，对齐 B1 单次请求超时）。
+>
+> **决定 3 — 工具发现粒度**：一个 MCP Server → `listTools()` → 每个 remote tool 注册一条 Zify `tool` 表记录：`source_type=MCP`、关联 `mcp_server_id`、`input_schema`=MCP tool 的 inputSchema。（C2 定连接生命周期/发现时机/缓存；D2 定命名冲突去重）
+>
+> **B2 中立边界修正**（已同步回填 B2 卡片）：tool 模块「中立」从「pom 零 spring-ai」精确为「**接口中立**」——接口不含 spring-ai LLM 抽象（`ChatModel`/`ToolCallback`/`ChatResponse`），但 infrastructure 层可用 `spring-ai-mcp-client`（MCP 协议实现，与 HTTP 工具用 RestClient 同性质）。备选（未采纳）：官方 MCP Java SDK `io.modelcontextprotocol:mcp`（独立于 spring-ai，但无 Boot 自动配置、需手动管理连接，一人开发成本高）。
+>
+> **连带影响**：
+> 1. tool 模块 pom 加 `spring-ai-starter-mcp-client`（B1 已预告）。
+> 2. `application.yml`：`spring.ai.mcp.client.*` 配置（type=SYNC、toolcallback.enabled=false、各 server 连接配置）。
+> 3. C2 定连接生命周期（starter 提供 `toolsChangeConsumer` 供工具列表变更通知）；D2 定命名冲突（starter 的 `DefaultMcpToolNamePrefixGenerator` 在 ToolCallback 层，关闭后 Zify 自行去重）。
+> 4. tool 表 `source_type=MCP` + `mcp_server_id`（D1/D2）。
+>
+> **决策日期**：2026-06-14
 
 ---
 
@@ -320,7 +414,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | C1 |
 
@@ -332,7 +426,21 @@
 
 **关联文档**：`glm-docs/07`（连接/重试原则）、`glm-docs/12` §五。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **决定 1 — 连接模式：常驻保活**（非按需）：starter 应用启动时连接已配置的 `mcp_server`，复用连接；用户新增 server → 即时建连；删除/禁用 server → 关闭连接。不按需建连（ReAct 多次调同一 server，反复建连开销大）。
+>
+> **决定 2 — 工具发现时机：连接时一次性 + `toolsChangeConsumer` 增量**：连接建立后 `listTools()` → 写 `tool` 表（`source_type=MCP`、`mcp_server_id`、`input_schema`=MCP tool schema）；`toolsChangeConsumer`（starter 提供）监听 server 端工具增删 → 增量更新 tool 表（启用/禁用/新增/软删）；不每次调用前刷新（`listTools` 已缓存）。
+>
+> **决定 3 — 断连重连 + 状态标记**：starter 内置重连；Zify 层 `mcp_server` 表存连接状态（`ONLINE`/`OFFLINE`/`ERROR`）。重连失败 → 标记 `ERROR` → `listBoundTools`（B2）时该 server 下工具不可用（衔接 D2 降级）；连接恢复 → 重新 `listTools` 刷新 tool 表 + 状态回 `ONLINE`。
+>
+> **决定 4 — 并发：单连接复用**：每个 `mcp_server` 一条 `McpClient` 连接，并发调用复用（MCP JSON-RPC 单连接多请求）；不需 per-server 连接池（一期 MCP 调用量不大）。
+>
+> **连带影响**：
+> 1. `mcp_server` 表：连接配置（`base_url`/`transport_type`/`auth_config`）+ 状态字段（`ONLINE`/`OFFLINE`/`ERROR`）（D1 落字段）。
+> 2. 新增 server 即时连接、toolsChange 增量更新 tool 表：Zify 层实现（starter 提供 hook）。
+> 3. server 状态变更 → tool 可用性联动（D2）。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -340,7 +448,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | B1, B2 |
 
@@ -352,7 +460,21 @@
 
 **关联文档**：`glm-docs/02` §3、`docs-prd/phase-P1/02`（SecretEncryptor 复用）、`CLAUDE.md` §7。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **决定 1 — 两种定义方式统一**（底层同构）：手动配置（用户填 endpoint/method/header/body 模板 + inputSchema）与 OpenAPI 解析（导入 spec 自动提取）产出**同构的 tool 配置**——底层 `tool` 表存统一的「HTTP 工具配置」。
+>
+> **决定 2 — OpenAPI 解析范围**：版本 OpenAPI **3.0/3.1**；映射粒度**一个 operation → 一个 tool**（path+method 唯一标识，一个 spec 多 operation → 多 tool）；解析库 **Swagger Parser**（`io.swagger.parser.v3:swagger-parser-v3`，OpenAPI 解析事实标准，新依赖已确认引入）。解析产出每个 operation → `endpoint`(baseUrl+path)/`method`/参数(name/in/type/required) → 生成 `input_schema` + 参数映射。
+>
+> **决定 3 — 鉴权凭据加密**：Header/Body 里的 token/API Key 敏感信息**加密存储**，复用 `common.SecretEncryptor`（P1 Provider API Key 已用）；明文仅执行时解密、**不记录、不返回**（对齐 §6）。`tool` 表存 `auth_config`（加密 JSON）。
+>
+> **决定 4 — 参数映射（OpenAPI `in` 字段）**：LLM 填的 args 按 `in` 映射——`path`→填充 URL 模板（`/users/{id}`）、`query`→拼 query string、`header`→设请求头、`body`→request body。手动配置工具：用户定义参数→path/query/header/body 映射或固定模板。
+>
+> **连带影响**：
+> 1. `tool` 表：`endpoint`/`method`/`params_mapping`(JSON)/`headers_template`(JSON)/`body_template`/`auth_config`(加密 JSON)/`input_schema`（D1 落字段）。
+> 2. HTTP 工具执行：tool 模块 infrastructure 层，用 RestClient（对齐 07/B1），按 `params_mapping` 构造请求。
+> 3. 新依赖：`io.swagger.parser.v3:swagger-parser-v3`（tool 模块 pom）。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -360,7 +482,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | A1 |
 
@@ -372,7 +494,23 @@
 
 **关联文档**：`docs-prd/phase-P1/02` §5.3（中断与取消）、`glm-docs/07`（超时）。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **决定 1 — 终止条件**：①模型 `finishReason=STOP` 无 tool call → 正常结束；②**最大轮次**（默认 **10**，可配）→ 落库已产出内容（`finishReason=MAX_TURNS`），视作正常截断不报错；③token 累计接近窗口 → A2 的 turn 级摘要压缩处理，仍超则中断。
+>
+> **决定 2 — 死循环兜底**：主兜底 = 最大轮次（达到即停）；增强 = 检测同一 `(toolName, args)` 连续重复 **3 次** → 先回灌「检测到重复调用，请换方法」给模型一轮（给纠正机会），仍重复则中断。
+>
+> **决定 3 — 用户中断（SSE 断连/停止）**：取消链 SSE 断连 → chat `Future.cancel` → engine 中断循环 + **取消进行中工具调用**（B1 工具执行支持中断/RestClient 取消）→ model 取消当前 LLM stream。部分落库（对齐 P1 §5.3 + A2）：已产出文本 + 已完成工具结果 → 落库（`finishReason=CANCELLED`）；进行中工具取消、不落库。
+>
+> **决定 4 — 超时分层**：单次 LLM stream 120s（07 §4.2/model 层）；单工具调用 30s 可配（B1）；**整轮 ReAct 循环 deadline 120s**（从用户发消息起，对齐 SseEmitter，C4 新增）。循环每轮检查剩余时间，不足 → 中断（落库 `TIMEOUT`）。
+>
+> **配置项**：`zify.chat.react.{max-turns:10, loop-deadline:120s, dup-tool-call-threshold:3}`。
+>
+> **连带影响**：
+> 1. engine 循环控制逻辑（`EngineService` 扩展）；`ChatTurnResult.finishReason` 增 `MAX_TURNS`/`TIMEOUT`（C5 的 SSE 也带 finishReason）。
+> 2. 中断部分落库（`ChatStreamService` 扩展，对齐 P1 §5.3）。
+> 3. 取消进行中工具衔接 C6（线程模型）。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -380,7 +518,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟠 前置必要 |
 | 前置依赖 | A1, A2 |
 
@@ -396,7 +534,42 @@
 
 **关联文档**：`docs-prd/phase-P1/02` §5.2 §6.7、`glm-docs/06`（前端 SSE 放置）。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-14）
+> **事件协议扩展**（P1 三类 `message_delta`/`done`/`run_error` 既有，新增两类）：
+>
+> | 事件 | 时机 | data 载荷 |
+> |------|------|----------|
+> | `message_delta`（既有） | 每轮 LLM token 流 | `{ conversationId, assistantMessageId, delta }` |
+> | **`tool_call_start`**（新增） | 模型决定调工具、engine 即将执行 | `{ conversationId, assistantMessageId, toolCallId, toolName, args(JSON) }` |
+> | **`tool_call_end`**（新增） | 工具执行完（成功/失败/熔断） | `{ conversationId, assistantMessageId, toolCallId, toolName, status(SUCCESS/ERROR), output, durationMs, toolCallLogId }` |
+> | `done`（既有） | 整轮 ReAct 结束 | `{ conversationId, assistantMessageId }`（=最终 ASSISTANT id） |
+> | `run_error`（既有） | 致命错误 | 不变 |
+>
+> **不需要 `turn_start`/`turn_end`**：靠 `assistantMessageId` 分段。多轮 ReAct 里每轮 LLM 输出对应**独立** assistantMessageId（A2：每条 ASSISTANT message 独立 id），前端按 id 分段。
+>
+> **载荷关键字段**：
+> - `assistantMessageId`：触发该工具调用的 ASSISTANT 消息 id（关联文本段与工具卡片）。
+> - `toolCallId`：模型生成的本次调用 id（请求↔响应配对）。
+> - `toolCallLogId`：**`tool_call_log` 主键**（A2 决策 5）——前端点击工具卡片下钻完整日志。
+> - `output`：给模型的文本（前端精简展示，完整结果折叠/下钻 `toolCallLogId`）；`status` 对齐 B2/B1 的 `ToolExecutionResultDTO.status`。
+>
+> **沿用 P1 两步协议（无新端点）**：工具事件在同一条 SSE 流推送，仍 `GET /api/chat/stream?messageId=...`（EventSource GET-only 不变）。`openChatStream` 的 handlers 增 `onToolCallStart`/`onToolCallEnd`。
+>
+> **前端渲染规则**：
+> - 文本段（`message_delta`）按 `assistantMessageId` 分组追加；多轮有多个文本段。
+> - 工具卡片（`tool_call_start`→`tool_call_end`）内联在所属文本段下方，**默认折叠**，完成可展开看 output、点 `toolCallLogId` 下钻。
+> - 实时性：`tool_call_start` 立即显示「调用中」，`tool_call_end` 更新结果/耗时。
+>
+> **历史回放 = 实时流同一套渲染**（衔接 A2）：从 message 表（`role`+`metadata`）重建工具调用视图——`ASSISTANT`+metadata.toolCalls 非空→文本段+工具卡片；`TOOL`+metadata.toolCallId/toolCallLogId→工具结果（并入对应卡片）；`ASSISTANT` 无 toolCalls→文本段（中间推理/最终回复）。SSE 事件是「增量」、历史 message 是「全量」，映射到同一 `MessageView`。
+>
+> **前端类型/Store 扩展（落 P2 spec）**：`ChatStreamEvent` 增 `tool_call_start`/`tool_call_end` 分支；`MessageView` 增 `toolCalls?: ToolCallView[]`（toolCallId/toolName/args/status/output/durationMs/toolCallLogId）；`chatStore` 增 `appendToolCall`/`updateToolCall`；`useChatStream` handlers 增 `onToolCallStart`/`onToolCallEnd`。
+>
+> **连带影响**：
+> 1. **sink 回调需扩展**：P1 的 `TextStreamSink`（仅 `onDelta`）需升级为支持工具事件的接口（`onDelta`/`onToolCallStart`/`onToolCallEnd`）——engine 在循环中经该回调推事件，chat 转 SSE。具体签名落 P2 spec。
+> 2. `docs-prd/phase-P1/02` §5.2 SSE 协议表 + `types/chat.ts` `ChatStreamEvent`：落实本扩展。
+> 3. `glm-docs/06` §11.7：前端 SSE 处理（useChatStream）扩展工具事件分支。
+>
+> **决策日期**：2026-06-14
 
 ---
 
@@ -404,7 +577,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | A1, B1 |
 
@@ -416,7 +589,22 @@
 
 **关联文档**：`glm-docs/07` §3（线程管理）、`CLAUDE.md` §3（线程池）、`docs-prd/phase-P1/02` §十一（llmTaskExecutor）。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **决定 1 — 并行工具调用**：模型一次返回多 tool call → **并行执行**（独立 IO 提效）；各工具独立超时（B1）+ 熔断（B1）+ 共享循环 deadline（C4）；结果按 `toolCallId` 配对回灌。
+>
+> **决定 2 — 工具执行器**：**独立于 `llmTaskExecutor`**（隔离工具 IO 与 LLM）；`newVirtualThreadPerTaskExecutor()`（Spring Bean，对齐 07 §3.2）+ 全局 `Semaphore`（`max-concurrent` 50）。per-tool 限流留二期。（CLAUDE.md §3「禁 `Executors.newXxx()`」针对 `newFixed`/`newCached` 无界队列 OOM，虚拟线程执行器是 07 §3.2 已定例外。）
+>
+> **决定 3 — 同步阻塞模型**：engine 循环在虚拟线程上同步调 model + tool（阻塞 IO 不占 OS 线程，简单高效）；不用异步编排（`CompletableFuture` 仅并行多工具）；reactive 流由 `CountDownLatch` 桥接到同步（07 §3.1）。
+>
+> **决定 4 — 并行实现**：多 tool call → 各 submit 工具执行器 + acquire Semaphore → `CompletableFuture.allOf` 等全部；各独立 try/catch（互不影响、各自 status）；各 own timeout + 循环 deadline 约束。
+>
+> **决定 5 — SSE 事件时序（C5）**：`tool_call_start(A/B)` 提交时发 → `tool_call_end` 各完成时发（乱序，前端按 toolCallId 配对）→ 全部完成 → 下一轮 `message_delta`。
+>
+> **配置**：`zify.tool.executor.max-concurrent: 50`。
+>
+> **连带影响**：tool 模块 `ToolExecutor` Bean（虚拟线程+Semaphore）；engine 循环并行执行；取消（C4）`Future.cancel` 取消进行中并行工具。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -424,7 +612,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | — |
 
@@ -436,7 +624,20 @@
 
 **关联文档**：`CLAUDE.md` §7（部署安全）、`glm-docs/08`。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **决定 1 — SSRF 防护**（HTTP 工具 URL + MCP Server URL）：**黑名单模式**（默认开，可配关闭）。禁止解析到内网/保留地址——IPv4：`127.0.0.0/8`、`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`、`169.254.0.0/16`（含云元数据 `169.254.169.254`）、`0.0.0.0/8`、`100.64.0.0/10`；IPv6：`::1`、`fc00::/7`、`fe80::/10`。**DNS 检查**：解析→校验所有 IP→连接用已解析 IP（一期基础防护；完整 DNS-rebinding 防护自定义 DNS resolver 留二期）。校验时机：保存时（即时反馈）+ 运行时（防 IP 变更）。
+>
+> **决定 2 — MCP Server URL**：C2 连接时走同样 SSRF 黑名单。
+>
+> **决定 3 — 大小限制 + 截断**：**响应**默认上限 **32KB**（可配），超则截断+标记 `truncated`，回灌模型/存 message/tool_call_log 用截断后内容（衔接 A2/D1）；**请求体**默认上限 **1MB**。
+>
+> **决定 4 — Header 防护**：允许任意键值，但敏感 Header（`Authorization`/`Cookie`/`Set-Cookie`）**不明文记入** tool_call_log/output（脱敏）；Header 值大小限制。
+>
+> **配置**：`zify.tool.security.{ssrf.enabled:true, ssrf.allow-private:false, response-max-bytes:32768, request-max-bytes:1048576}`。
+>
+> **连带影响**：tool 模块 `infrastructure/` 加 SSRF 校验+大小限制（HTTP 工具+MCP 都过）；tool_call_log 存截断后内容（D1）。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -448,7 +649,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | A2 |
 
@@ -460,7 +661,18 @@
 
 **关联文档**：`glm-docs/10`、`glm-docs/11`（编号 19）、`glm-docs/09`（大表性能）、`docs-prd/phase-P1/01-data-model.md`（建表风格）。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **字段**（对齐 glm-docs/10/11 编号 19 + 各议题决策汇总）：`id`/`created_at`/`updated_at`/`is_deleted`/`tool_id`/`tool_name`(快照)/`source_type`(MCP/HTTP/WFT)/`mcp_server_id`(NULL,C1)/`agent_id`(NULL)/`conversation_id`(NULL)/`workflow_run_id`(NULL,P4)/`workflow_node_run_id`(NULL,P4)/`turn`(NULL)/`tool_call_id`(关联 TOOL message,A2决策5)/`input`(JSON,截断后)/`output`(LONGTEXT,截断后)/`status`(SUCCESS/ERROR/TIMEOUT/CIRCUIT_OPEN/CANCELLED)/`duration_ms`/`error`(TEXT NULL)。不设 created_by/updated_by（大表规则）。
+>
+> **存储策略**（衔接 C7）：input/output 存**截断后**内容（C7 响应 32KB 阈值）；input 用 JSON 列，output 用 LONGTEXT。
+>
+> **索引**（关联 ID 必须建，§5）：`idx_tcl_conv_created`(conversation_id,is_deleted,created_at DESC,id DESC)、`idx_tcl_agent_created`(agent_id,created_at)、`idx_tcl_tool_created`(tool_id,created_at)、`idx_tcl_created_at`(created_at)。
+>
+> **大表运维**：一期**不分区**（50 人量不大）；P5 归档按 created_at 分批物理删除（保留 N 天），预留 idx_created_at；列表查询禁止 SELECT *。
+>
+> **连带**：迁移脚本 `V6__tool__create_tool_call_log.sql`（tool 模块，P2）；glm-docs/11 tool_call_log 归属已改 tool（A2），关系 message(TOOL) 0..1:1 tool_call_log（经 tool_call_id）。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -468,7 +680,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 状态 | ⬜ 待讨论 |
+| 状态 | ✅ 已决 |
 | 优先级 | 🟡 实现期细化 |
 | 前置依赖 | B2 |
 
@@ -480,7 +692,18 @@
 
 **关联文档**：`glm-docs/02` §3、`docs-prd/phase-P1/02` §10.1（A-07 运行时校验风格）。
 
-**决策结果**：⬜ 待回填
+**决策结果**：✅ 已决（2026-06-15）
+> **决定 1 — 工具禁用/删除/编辑运行时处理**：工具禁用（`tool.enabled=0`）或软删（`is_deleted=1`）→ `listBoundTools`（B2）**不返回**（本轮 LLM 看不到）；编辑改配置 → 下次 `listBoundTools` 返回新配置。`agent_tool` 关联**不随禁用自动删**（保留绑定），仅 `listBoundTools` 过滤。
+>
+> **决定 2 — MCP Server 断连降级**（衔接 C2）：`mcp_server.status != ONLINE` 的工具，`listBoundTools` 过滤掉；若 Agent **所有**工具不可用 → 模型无工具能力，正常回答。
+>
+> **决定 3 — 命名冲突去重**（下发 LLM 的工具名必须唯一）：HTTP 工具用户起名，创建/改名校验 `tool.name` 未删除唯一；MCP 工具不同 server 可能同名，注册时去重——冲突则加前缀 `mcpServerName__toolName`（Zify 自实现，因 C1 关闭 spring-ai-mcp prefix generator）。`tool.name` 即 LLM-visible name，全局唯一。
+>
+> **决定 4 — 绑定校验时机**（对齐 P1 A-07）：保存时校验工具存在+enabled（即时反馈）+运行时 `listBoundTools` 再校验可用性。
+>
+> **连带**：`tool` 表 `name` 唯一约束（generated column）+ `enabled` 字段；`listBoundTools` 过滤逻辑 `tool.enabled=1 AND tool.is_deleted=0 AND (source_type=HTTP OR mcp_server.status=ONLINE)`；Agent 表单工具绑定校验。
+>
+> **决策日期**：2026-06-15
 
 ---
 
@@ -490,5 +713,17 @@
 |------|------|------|--------|
 | 2026-06-14 | P2-A1 | 采纳方案③（Spring AI User-Controlled streaming，复用 `ChatModel.stream()` + `ToolCallingManager` 手动驱动循环）；状态 ⬜→✅。连带影响已分派给 A2/B2/C5/C4 | Claude |
 | 2026-06-14 | P2-B2 | 定中立化边界（tool 中立 / engine 循环用中立 DTO / model 封装 spring-ai）+ ToolFacade 两方法 + DTO；状态 ⬜→✅。同步回填 A1 精度修正（spring-ai 类型封装收敛到 model，engine 不用 ToolCallingManager，Tool 不实现 ToolCallback） | Claude |
+| 2026-06-14 | P2-A2 | 定 5 点决策：①tool_call_log 归 tool 模块（修订 glm-docs/11 engine→tool）②工具过程进 message 表 ③engine 保持纯编排（P1 §2.1 不改）④摘要压缩以 turn 为单位 ⑤tool_call_log↔TOOL message 经 toolCallLogId 关联；状态 ⬜→✅。化解「engine 写 tool_call_log」与 P1 §2.1 的张力 | Claude |
+| 2026-06-14 | P2-B1 | 定工具调用规范：超时分层+可配 / 重试幂等性驱动（非幂等请求发出后不重试）/ 熔断 per-tool_id / 失败回灌不中断循环 / 异常对 engine 只暴露 DTO；规范落点新建 glm-docs/13；状态 ⬜→✅ | Claude |
+| 2026-06-14 | P2-C5 | 定 SSE 协议扩展：新增 tool_call_start/tool_call_end 两事件（带 toolCallLogId 下钻）、不要 turn 事件（靠 assistantMessageId 分段）、沿用两步协议、工具卡片默认折叠、历史回放与实时流同一套渲染；连带 sink 回调需扩展（onDelta→+onToolCall*）；状态 ⬜→✅ | Claude |
+| 2026-06-14 | P2-C1 | 定 MCP：传输只做 Streamable-HTTP+SSE 不做 stdio；用 spring-ai-mcp-client（SYNC）+ 关闭 ToolCallback auto-config + 自适配 McpClient→中立 Tool；工具发现每 remote tool 一条 tool 记录；状态 ⬜→✅。同步回填 B2 中立修正（pom 零 spring-ai → 接口中立，infra 层可用 spring-ai-mcp） | Claude |
+| 2026-06-15 | P2-C2 | 定 MCP 连接生命周期：常驻保活 / 连接时一次性发现+toolsChange 增量 / 断连重连+mcp_server 状态标记（ONLINE/OFFLINE/ERROR）降级 / 单连接复用；状态 ⬜→✅ | Claude |
+| 2026-06-15 | P2-C3 | 定 HTTP 工具：两种定义方式底层同构 / OpenAPI 3.0-3.1 一个 operation→一个 tool（Swagger Parser 新依赖已确认）/ 鉴权加密复用 SecretEncryptor / 参数按 in 字段映射 path/query/header/body；状态 ⬜→✅ | Claude |
+| 2026-06-15 | P2-C4 | 定 ReAct 循环控制：终止（STOP/MAX_TURNS 默认10/token）/ 死循环兜底（重复3次回灌再中断）/ 用户中断取消链+部分落库 CANCELLED / 超时分层（单LLM 120s+单工具30s+循环deadline 120s）；状态 ⬜→✅ | Claude |
+| 2026-06-15 | P2-C6 | 定并行工具+线程模型：多 tool call 并行执行 / 独立 ToolExecutor（虚拟线程+Semaphore 50，与 llmTaskExecutor 隔离）/ 同步阻塞模型（虚拟线程优势）/ CompletableFuture.allOf / SSE 乱序按 toolCallId 配对；状态 ⬜→✅ | Claude |
+| 2026-06-15 | P2-C7 | 定工具安全：SSRF 黑名单（默认开，禁内网/保留地址+DNS 检查）+ 响应 32KB 截断 + 请求 1MB 上限 + 敏感 Header 脱敏；状态 ⬜→✅ | Claude |
+| 2026-06-15 | P2-D1 | 定 tool_call_log(19) 字段（17 列覆盖各议题决策）+ 截断存储（C7 32KB）+ 4 索引 + 不分区；状态 ⬜→✅ | Claude |
+| 2026-06-15 | P2-D2 | 定工具生命周期：禁用/断连经 listBoundTools 过滤降级 / 命名冲突去重（HTTP 校验唯一 + MCP 加 server 前缀）/ 双重校验（保存时+运行时）；状态 ⬜→✅ | Claude |
+| 2026-06-15 | 🎉 **P2 全部 13 题决策完成** | A1/B2/A2/B1/C5/C1-C4/C6/C7/D1/D2 全部 ✅；可进入 P2 正式文档（`01-data-model.md` + `02-functional-spec.md`）撰写 + `glm-docs/*` 回写 | Claude |
 
 > 议题全部 ✅ 后：据此清单撰写 `docs-prd/phase-P2/01-data-model.md` 与 `02-functional-spec.md`，并按需回写 `glm-docs/*`。
