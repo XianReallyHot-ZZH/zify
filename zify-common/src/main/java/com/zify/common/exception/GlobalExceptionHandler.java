@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 import java.util.stream.Collectors;
 
@@ -102,6 +103,15 @@ public class GlobalExceptionHandler {
     public Result<Void> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
         log.warn("Method not supported: method={}, supported={}", e.getMethod(), e.getSupportedHttpMethods());
         return Result.fail(ErrorCode.METHOD_NOT_ALLOWED.getCode(), ErrorCode.METHOD_NOT_ALLOWED.getMessage());
+    }
+
+    /**
+     * 异步请求客户端已断开（如 SSE 流式中用户点停止关闭连接）：静默，不报 error。
+     * 否则走兜底 handler 返回 Result，但 text/event-stream 没有 Result converter → 产生 "No converter" 噪音。
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsable(AsyncRequestNotUsableException e) {
+        log.debug("Async request not usable (client disconnected): {}", e.getMessage());
     }
 
     /**

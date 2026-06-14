@@ -84,6 +84,7 @@ public class ChatStreamService {
         long start = System.currentTimeMillis();
         StringBuilder accumulated = new StringBuilder();
         AtomicBoolean deltaSent = new AtomicBoolean(false);
+        AtomicBoolean clientGone = new AtomicBoolean(false);
         String assistantMessageId = IdGenerator.uuid();
 
         String conversationId = null;
@@ -126,7 +127,7 @@ public class ChatStreamService {
                 payload.put("conversationId", convId);
                 payload.put("assistantMessageId", assistantMessageId);
                 payload.put("delta", delta);
-                sendEvent(emitter, "message_delta", payload);
+                sendEvent(emitter, clientGone, "message_delta", payload);
             };
 
             ChatTurnCommand command = new ChatTurnCommand();
@@ -155,15 +156,16 @@ public class ChatStreamService {
             Map<String, Object> donePayload = new LinkedHashMap<>();
             donePayload.put("conversationId", convId);
             donePayload.put("assistantMessageId", assistantMessageId);
-            sendEvent(emitter, "done", donePayload);
+            sendEvent(emitter, clientGone, "done", donePayload);
             emitter.complete();
             log.info("Chat turn done: conversationId={}, assistantMessageId={}, durationMs={}",
                     convId, assistantMessageId, durationMs);
 
         } catch (LlmCancelledException e) {
-            // 用户取消（中断）：已产出部分文本则落库（CANCELLED）并发 done；否则静默放弃
-            Thread.currentThread().interrupt();
-            handleCancel(emitter, accumulated, deltaSent, conversationId, assistantMessageId, start);
+            // 用户取消（中断）：清除中断标志——后续 DB 落库不能在 interrupted 状态，
+            // 否则 HikariPool 拿连接时 socket 被 "Closed by interrupt" → 连接 broken → 落库失败。
+            Thread.interrupted();
+            handleCancel(emitter, accumulated, deltaSent, clientGone, conversationId, assistantMessageId, start);
         } catch (LlmException e) {
             // Provider 错误（含首 chunk 后失败 / 重试耗尽）：不落库，发 run_error
             log.warn("Chat turn failed: conversationId={}, retryable={}, error={}",
@@ -179,9 +181,10 @@ public class ChatStreamService {
      * 取消处理：已产出文本 → 落库部分（CANCELLED）+ done；未产出 → 不落库、不发 run_error（视为用户主动放弃）。
      */
     private void handleCancel(SseEmitter emitter, StringBuilder accumulated, AtomicBoolean deltaSent,
+                              AtomicBoolean clientGone,
                               String conversationId, String assistantMessageId, long start) {
         if (conversationId == null || !deltaSent.get() || accumulated.length() == 0) {
-            emitter.complete();
+            safeComplete(emitter);
             return;
         }
         try {
@@ -192,11 +195,22 @@ public class ChatStreamService {
             Map<String, Object> donePayload = new LinkedHashMap<>();
             donePayload.put("conversationId", conversationId);
             donePayload.put("assistantMessageId", assistantMessageId);
-            sendEvent(emitter, "done", donePayload);
+            sendEvent(emitter, clientGone, "done", donePayload);
         } catch (Exception ex) {
             log.warn("Failed to persist cancelled partial turn: {}", ex.getMessage());
         } finally {
+            safeComplete(emitter);
+        }
+    }
+
+    /**
+     * 幂等关闭 emitter：客户端已断开/已完成时 complete() 会抛 IllegalStateException，这里吞掉。
+     */
+    private void safeComplete(SseEmitter emitter) {
+        try {
             emitter.complete();
+        } catch (IllegalStateException ignored) {
+            // emitter 已完成/超时/客户端断开
         }
     }
 
@@ -246,12 +260,16 @@ public class ChatStreamService {
         return metadata;
     }
 
-    private void sendEvent(SseEmitter emitter, String name, Map<String, Object> payload) {
+    private void sendEvent(SseEmitter emitter, AtomicBoolean clientGone, String name, Map<String, Object> payload) {
+        if (clientGone.get()) {
+            return;
+        }
         try {
             emitter.send(SseEmitter.event().name(name).data(payload, MediaType.APPLICATION_JSON));
         } catch (IOException | IllegalStateException e) {
-            // 客户端已断开 / emitter 已完成：抛出以触发上层 emitter 的 onError → 取消上游
-            throw new IllegalStateException("SSE send failed: " + name, e);
+            // 客户端已断开（ClientAbortException）/ emitter 已完成：静默标记，不再发送。
+            // 不抛出，避免在 reactor 线程污染 error path（取消应由 future.cancel → LlmCancelledException 路径处理）。
+            clientGone.set(true);
         }
     }
 
