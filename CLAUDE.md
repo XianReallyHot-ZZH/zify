@@ -237,19 +237,4 @@ LLM（→ `glm-docs/07`）：
 
 ---
 
-## §12 本地环境
-
-### maven
-
-本地 Maven 版本是 Apache Maven 3.9.6。 
-路径：D:\Developer\JavaSoftWare\apache-maven-3.9.6-bin\apache-maven-3.9.6。 
-配置的 Maven 本地仓库路径是：D:\Developer\JavaSoftWare\apache-maven-3.9.6-bin\repository。
-
-### redis
-
-本地 redis 安装路径：D:\Developer\DeveloperInstall\Redis\Redis-7.4.9\Redis-7.4.9-Windows-x64-cygwin-with-Service
-
-### mysql
-
-本地 mysql 安装路径：D:\Developer\DeveloperInstall\MySQL\MySQL8\Install\MySQL Server 8.0
 
