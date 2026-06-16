@@ -60,6 +60,27 @@ zify:
       compaction-batch: 6
       max-input-tokens: 30000
       summary-overhead-tokens: 2000
+    react:                               # ReAct 多轮循环控制（glm-docs/13 §C4）
+      max-turns: 10
+      loop-deadline: 120s
+      dup-tool-call-threshold: 3
+  tool:                                  # 工具调用（glm-docs/13 §四–§八）
+    timeout:
+      connect: 10s
+      mcp-handshake: 15s
+      request-default: 30s               # tool.timeout_seconds 未设时兜底
+      total-cap: 60s
+    circuit-breaker:
+      failure-threshold: 5
+      open-duration: 60s
+    executor:
+      max-concurrent: 50                 # 全局 Semaphore
+    security:
+      ssrf:
+        enabled: true                    # SSRF 黑名单开关
+        allow-private: false             # 是否允许内网（内网部署可开）
+      response-max-bytes: 32768          # 响应截断阈值 32KB
+      request-max-bytes: 1048576         # 请求体上限 1MB
   external-call:
     connect-timeout: 10s
     read-timeout: 60s

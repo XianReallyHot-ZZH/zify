@@ -35,6 +35,8 @@
         <spring-boot.version>4.0.0</spring-boot.version>
         <spring-ai.version>2.0.0</spring-ai.version>
         <mybatis-plus.version>3.5.16</mybatis-plus.version>
+        <!-- OpenAPI 3.0/3.1 解析（P2 工具 OpenAPI 导入，glm-docs/13 §10） -->
+        <swagger-parser.version>2.1.2</swagger-parser.version>
         <zify.version>${project.version}</zify.version>
     </properties>
 
@@ -63,6 +65,13 @@
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
+            </dependency>
+
+            <!-- Swagger Parser（OpenAPI 3.0/3.1 解析，P2 工具导入） -->
+            <dependency>
+                <groupId>io.swagger.parser.v3</groupId>
+                <artifactId>swagger-parser-v3</artifactId>
+                <version>${swagger-parser.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.baomidou</groupId>
