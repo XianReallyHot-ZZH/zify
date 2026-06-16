@@ -2,6 +2,7 @@ package com.zify.tool.infrastructure.facade;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zify.tool.api.ToolFacade;
+import com.zify.tool.api.dto.BoundToolDTO;
 import com.zify.tool.api.dto.ToolExecutionCommand;
 import com.zify.tool.api.dto.ToolExecutionResultDTO;
 import com.zify.tool.api.dto.ToolExecContext;
@@ -76,6 +77,21 @@ public class ToolFacadeImpl implements ToolFacade {
                     tool.getInputSchema(), tool.getSourceType()));
         }
         return available;
+    }
+
+    @Override
+    public List<BoundToolDTO> listToolBindings(Collection<String> toolIds) {
+        if (toolIds == null || toolIds.isEmpty()) {
+            return List.of();
+        }
+        List<ToolEntity> tools = toolMapper.selectList(new LambdaQueryWrapper<ToolEntity>()
+                .in(ToolEntity::getId, toolIds)
+                .select(ToolEntity::getId, ToolEntity::getName, ToolEntity::getDescription,
+                        ToolEntity::getSourceType, ToolEntity::getEnabled, ToolEntity::getMcpServerId));
+        return tools.stream()
+                .map(tool -> new BoundToolDTO(tool.getId(), tool.getName(), tool.getDescription(),
+                        tool.getSourceType(), tool.getEnabled(), isAvailable(tool)))
+                .toList();
     }
 
     @Override

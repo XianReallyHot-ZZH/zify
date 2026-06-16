@@ -1,6 +1,9 @@
 package com.zify.agent.api.dto;
 
+import com.zify.tool.api.dto.BoundToolDTO;
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Agent 详情响应（含 systemPrompt）。
@@ -17,6 +20,10 @@ public class AgentResponse {
     private String modelName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    /** P2：已绑定工具 ID。 */
+    private List<String> toolIds;
+    /** P2：已绑定工具摘要（含可用性）。 */
+    private List<BoundToolDTO> toolSummaries;
 
     public String getId() {
         return id;
@@ -96,5 +103,21 @@ public class AgentResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<String> getToolIds() {
+        return toolIds;
+    }
+
+    public void setToolIds(List<String> toolIds) {
+        this.toolIds = toolIds;
+    }
+
+    public List<BoundToolDTO> getToolSummaries() {
+        return toolSummaries;
+    }
+
+    public void setToolSummaries(List<BoundToolDTO> toolSummaries) {
+        this.toolSummaries = toolSummaries;
     }
 }

@@ -39,10 +39,12 @@ public class AgentService {
 
     private final AgentMapper agentMapper;
     private final ModelFacade modelFacade;
+    private final AgentToolService agentToolService;
 
-    public AgentService(AgentMapper agentMapper, ModelFacade modelFacade) {
+    public AgentService(AgentMapper agentMapper, ModelFacade modelFacade, AgentToolService agentToolService) {
         this.agentMapper = agentMapper;
         this.modelFacade = modelFacade;
+        this.agentToolService = agentToolService;
     }
 
     public PageResult<AgentResponse> listAgents(AgentListQuery query) {
@@ -72,7 +74,11 @@ public class AgentService {
 
     public AgentResponse getAgent(String id) {
         AgentEntity entity = getAgentOrThrow(id);
-        return AgentConverter.toResponse(entity, modelNameFor(entity.getModelId()));
+        AgentResponse response = AgentConverter.toResponse(entity, modelNameFor(entity.getModelId()));
+        com.zify.agent.api.dto.AgentToolsResponse bound = agentToolService.getBoundTools(id);
+        response.setToolIds(bound.getToolIds());
+        response.setToolSummaries(bound.getTools());
+        return response;
     }
 
     /**
@@ -80,7 +86,9 @@ public class AgentService {
      */
     public AgentConfigDTO getAgentConfig(String agentId) {
         AgentEntity entity = getAgentOrThrow(agentId);
-        return AgentConverter.toConfigDTO(entity);
+        AgentConfigDTO dto = AgentConverter.toConfigDTO(entity);
+        dto.setBoundToolIds(agentToolService.getBoundToolIds(agentId));
+        return dto;
     }
 
     public AgentResponse createAgent(CreateAgentRequest request) {

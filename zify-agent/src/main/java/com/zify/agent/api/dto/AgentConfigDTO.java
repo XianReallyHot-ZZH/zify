@@ -1,8 +1,10 @@
 package com.zify.agent.api.dto;
 
+import java.util.List;
+
 /**
  * Agent 配置 DTO（Facade 用：给 engine / chat 获取 Agent 配置）。
- * 不暴露工具/知识库（P1 无）。
+ * P2 增 boundToolIds（engine 取绑定经此流转）。
  */
 public class AgentConfigDTO {
 
@@ -12,6 +14,8 @@ public class AgentConfigDTO {
     private String status;
     private String systemPrompt;
     private String modelId;
+    /** 已绑定的工具 ID（P2）。 */
+    private List<String> boundToolIds;
 
     public String getId() {
         return id;
@@ -59,5 +63,13 @@ public class AgentConfigDTO {
 
     public void setModelId(String modelId) {
         this.modelId = modelId;
+    }
+
+    public List<String> getBoundToolIds() {
+        return boundToolIds;
+    }
+
+    public void setBoundToolIds(List<String> boundToolIds) {
+        this.boundToolIds = boundToolIds;
     }
 }

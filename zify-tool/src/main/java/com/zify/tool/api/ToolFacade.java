@@ -1,5 +1,6 @@
 package com.zify.tool.api;
 
+import com.zify.tool.api.dto.BoundToolDTO;
 import com.zify.tool.api.dto.ToolExecutionCommand;
 import com.zify.tool.api.dto.ToolExecutionResultDTO;
 import com.zify.tool.api.dto.ToolViewDTO;
@@ -20,6 +21,12 @@ public interface ToolFacade {
      * source_type=HTTP 或 source_type=MCP 且对应 mcp_server.status=ONLINE）。
      */
     List<ToolViewDTO> listAvailableTools(Collection<String> toolIds);
+
+    /**
+     * 返回这些 ID 对应的工具绑定视图（不过滤 enabled/可用，含 enabled + available 标记）。
+     * 供 agent 绑定页/详情展示（哪些可用、哪些禁用/断连灰显）。不含 input_schema。
+     */
+    List<BoundToolDTO> listToolBindings(Collection<String> toolIds);
 
     /**
      * 执行工具：内部完成 SSRF 运行时校验、超时/重试/熔断、截断、写 tool_call_log，

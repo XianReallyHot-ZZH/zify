@@ -2,10 +2,13 @@ package com.zify.agent.adapter.web;
 
 import com.zify.agent.api.dto.AgentListQuery;
 import com.zify.agent.api.dto.AgentResponse;
+import com.zify.agent.api.dto.AgentToolsResponse;
+import com.zify.agent.api.dto.BindToolsRequest;
 import com.zify.agent.api.dto.CreateAgentRequest;
 import com.zify.agent.api.dto.UpdateAgentRequest;
 import com.zify.agent.api.dto.UpdateAgentStatusRequest;
 import com.zify.agent.domain.AgentService;
+import com.zify.agent.domain.AgentToolService;
 import com.zify.common.web.PageResult;
 import com.zify.common.web.Result;
 import jakarta.validation.Valid;
@@ -27,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgentController {
 
     private final AgentService agentService;
+    private final AgentToolService agentToolService;
 
-    public AgentController(AgentService agentService) {
+    public AgentController(AgentService agentService, AgentToolService agentToolService) {
         this.agentService = agentService;
+        this.agentToolService = agentToolService;
     }
 
     @PostMapping
@@ -64,5 +69,16 @@ public class AgentController {
                                      @Valid @RequestBody UpdateAgentStatusRequest request) {
         agentService.updateStatus(id, request.getStatus());
         return Result.ok();
+    }
+
+    @GetMapping("/{id}/tools")
+    public Result<AgentToolsResponse> getTools(@PathVariable String id) {
+        return Result.ok(agentToolService.getBoundTools(id));
+    }
+
+    @PutMapping("/{id}/tools")
+    public Result<AgentToolsResponse> bindTools(@PathVariable String id,
+                                                @RequestBody BindToolsRequest request) {
+        return Result.ok(agentToolService.bindTools(id, request.getToolIds()));
     }
 }
