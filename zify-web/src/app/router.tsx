@@ -9,6 +9,8 @@ import KnowledgeListPage from '../pages/knowledge/KnowledgeListPage'
 import KnowledgeDetailPage from '../pages/knowledge/KnowledgeDetailPage'
 import ToolListPage from '../pages/tools/ToolListPage'
 import ToolFormPage from '../pages/tools/ToolFormPage'
+import ToolCreatePage from '../pages/tools/ToolCreatePage'
+import McpServerFormPage from '../pages/tools/McpServerFormPage'
 import ModelPage from '../pages/models/ModelPage'
 
 const router = (
@@ -23,8 +25,9 @@ const router = (
       <Route path="knowledge" element={<KnowledgeListPage />} />
       <Route path="knowledge/:id" element={<KnowledgeDetailPage />} />
       <Route path="tools" element={<ToolListPage />} />
-      <Route path="tools/create" element={<ToolFormPage />} />
+      <Route path="tools/create" element={<ToolCreatePage />} />
       <Route path="tools/:id/edit" element={<ToolFormPage />} />
+      <Route path="tools/mcp/:serverId/edit" element={<McpServerFormPage />} />
       <Route path="models" element={<ModelPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>

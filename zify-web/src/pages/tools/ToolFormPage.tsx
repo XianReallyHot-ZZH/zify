@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Button,
   Input,
@@ -24,6 +24,7 @@ import type {
   ToolTestResult,
 } from '../../types/tool'
 import ParamSchemaEditor from '../../features/tool/components/ParamSchemaEditor'
+import OpenApiImportWizard from '../../features/tool/components/OpenApiImportWizard'
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
 const AUTH_TYPES: AuthType[] = ['NONE', 'API_KEY', 'BEARER']
@@ -33,8 +34,32 @@ const STEPS = ['基础', '请求', '鉴权', '高级', '测试', '确认']
 export default function ToolFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const mode = searchParams.get('mode')
   const isEdit = Boolean(id)
 
+  // OpenAPI 导入模式
+  if (mode === 'openapi' && !isEdit) {
+    return (
+      <div className="zify-page">
+        <PageHeader title="从 OpenAPI 导入" description="解析 OpenAPI 3.0/3.1，勾选 operation 批量生成 HTTP 工具" />
+        <OpenApiImportWizard onCancel={() => navigate('/tools')} />
+      </div>
+    )
+  }
+
+  return <ManualToolForm navigate={navigate} id={id} isEdit={isEdit} />
+}
+
+function ManualToolForm({
+  navigate,
+  id,
+  isEdit,
+}: {
+  navigate: (path: string) => void
+  id: string | undefined
+  isEdit: boolean
+}) {
   const [current, setCurrent] = useState(0)
 
   const [name, setName] = useState('')

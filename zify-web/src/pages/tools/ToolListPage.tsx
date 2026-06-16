@@ -105,7 +105,8 @@ export default function ToolListPage() {
 
   const createMenu = {
     items: [
-      { key: 'http', label: 'HTTP 工具', onClick: () => navigate('/tools/create?type=http') },
+      { key: 'http', label: 'HTTP 工具（手动）', onClick: () => navigate('/tools/create?type=http') },
+      { key: 'openapi', label: '从 OpenAPI 导入', onClick: () => navigate('/tools/create?type=http&mode=openapi') },
       { key: 'mcp', label: '连接 MCP Server', onClick: () => navigate('/tools/create?type=mcp') },
       { key: 'workflow', label: '工作流工具（P4 上线）', disabled: true },
     ],
