@@ -11,6 +11,8 @@ import java.util.List;
 public class ChatTurnCommand {
 
     private String agentId;
+    /** 触发会话（工具日志审计用，可空）。 */
+    private String conversationId;
     private List<ChatMessage> history;
     private String assistantMessageId;
     private String summary;
@@ -22,6 +24,14 @@ public class ChatTurnCommand {
 
     public void setAgentId(String agentId) {
         this.agentId = agentId;
+    }
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
     }
 
     public List<ChatMessage> getHistory() {
