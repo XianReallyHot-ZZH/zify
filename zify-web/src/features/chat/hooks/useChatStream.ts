@@ -11,6 +11,8 @@ export function useChatStream() {
   const currentConversationId = useChatStore((s) => s.currentConversationId)
   const appendMessage = useChatStore((s) => s.appendMessage)
   const appendDelta = useChatStore((s) => s.appendDelta)
+  const appendToolCall = useChatStore((s) => s.appendToolCall)
+  const updateToolCall = useChatStore((s) => s.updateToolCall)
   const finishAssistant = useChatStore((s) => s.finishAssistant)
   const setStreaming = useChatStore((s) => s.setStreaming)
   const setEventSource = useChatStore((s) => s.setEventSource)
@@ -45,6 +47,23 @@ export function useChatStream() {
 
       const es = openChatStream(userMessageId, {
         onDelta: (e) => appendDelta(e.assistantMessageId, e.delta),
+        onToolCallStart: (e) =>
+          appendToolCall(e.assistantMessageId, {
+            toolCallId: e.toolCallId,
+            toolName: e.toolName,
+            args: e.args,
+            status: null,
+            output: null,
+            durationMs: null,
+            toolCallLogId: null,
+          }),
+        onToolCallEnd: (e) =>
+          updateToolCall(e.assistantMessageId, e.toolCallId, {
+            status: e.status,
+            output: e.output,
+            durationMs: e.durationMs,
+            toolCallLogId: e.toolCallLogId,
+          }),
         onDone: (e) => {
           finishAssistant(e.assistantMessageId)
           setStreaming(false)
@@ -62,6 +81,8 @@ export function useChatStream() {
       currentConversationId,
       appendMessage,
       appendDelta,
+      appendToolCall,
+      updateToolCall,
       finishAssistant,
       setStreaming,
       setEventSource,

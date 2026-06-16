@@ -3,11 +3,12 @@ import { Button, Descriptions, Form, Input, Steps, Space, message } from 'antd'
 import AgentTypeSelector from './AgentTypeSelector'
 import PromptEditor from './PromptEditor'
 import ModelSelector from '../../model/components/ModelSelector'
+import ToolBinder from '../../tool/components/ToolBinder'
 import type { AgentResponse, CreateAgentRequest, UpdateAgentRequest } from '../../../types/agent'
 
 type AgentFormProps = {
   initialAgent?: AgentResponse
-  onSubmit: (values: CreateAgentRequest | UpdateAgentRequest) => Promise<void>
+  onSubmit: (values: CreateAgentRequest | UpdateAgentRequest, toolIds: string[]) => Promise<void>
   onCancel: () => void
 }
 
@@ -25,6 +26,7 @@ function AgentForm({ initialAgent, onSubmit, onCancel }: AgentFormProps) {
   const [form] = Form.useForm()
   const [current, setCurrent] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [toolIds, setToolIds] = useState<string[]>(initialAgent?.toolIds ?? [])
   const isEdit = Boolean(initialAgent)
 
   async function goNext() {
@@ -48,7 +50,7 @@ function AgentForm({ initialAgent, onSubmit, onCancel }: AgentFormProps) {
         modelId: values.modelId,
         ...(isEdit ? { status: initialAgent?.status } : {}),
       }
-      await onSubmit(payload)
+      await onSubmit(payload, toolIds)
     } catch (err) {
       if (err instanceof Error && err.message) {
         message.error(err.message)
@@ -100,6 +102,9 @@ function AgentForm({ initialAgent, onSubmit, onCancel }: AgentFormProps) {
         <Form.Item label="绑定模型" name="modelId" rules={[{ required: true, message: '请选择可用 LLM 模型' }]}>
           <ModelSelector />
         </Form.Item>
+        <Form.Item label="工具绑定（P2）">
+          <ToolBinder value={toolIds} onChange={setToolIds} />
+        </Form.Item>
       </div>
 
       <div style={{ display: current === 3 ? 'block' : 'none' }}>
@@ -115,6 +120,7 @@ function AgentForm({ initialAgent, onSubmit, onCancel }: AgentFormProps) {
                   <span style={{ whiteSpace: 'pre-wrap' }}>{v.systemPrompt || '—'}</span>
                 </Descriptions.Item>
                 <Descriptions.Item label="模型">{v.modelId || '—'}</Descriptions.Item>
+                <Descriptions.Item label="工具">{toolIds.length} 个</Descriptions.Item>
               </Descriptions>
             )
           }}

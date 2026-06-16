@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Card, message } from 'antd'
 import AgentForm from '../../features/agent/components/AgentForm'
 import { PageLoading } from '../../shared/ui'
-import { createAgent, getAgent, updateAgent } from '../../api/agentApi'
+import { bindTools, createAgent, getAgent, updateAgent } from '../../api/agentApi'
 import type { AgentResponse, CreateAgentRequest, UpdateAgentRequest } from '../../types/agent'
 
 export default function AgentFormPage() {
@@ -29,14 +29,20 @@ export default function AgentFormPage() {
     }
   }, [id])
 
-  async function handleSubmit(values: CreateAgentRequest | UpdateAgentRequest) {
+  async function handleSubmit(values: CreateAgentRequest | UpdateAgentRequest, toolIds: string[]) {
     try {
+      let agentId = id
       if (id) {
         await updateAgent(id, values as UpdateAgentRequest)
         message.success('Agent 已保存')
       } else {
-        await createAgent(values as CreateAgentRequest)
+        const created = await createAgent(values as CreateAgentRequest)
+        agentId = created.id
         message.success('Agent 已创建')
+      }
+      // 工具绑定（P2）：独立 PUT /agents/{id}/tools
+      if (agentId) {
+        await bindTools(agentId, toolIds)
       }
       navigate('/agents')
     } catch (err) {

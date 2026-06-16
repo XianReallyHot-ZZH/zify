@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { MessageView } from '../types/chat'
+import type { ToolCallView } from '../types/tool'
 
 interface ChatState {
   /** 当前打开的会话 */
@@ -17,6 +18,8 @@ interface ChatState {
   appendMessage: (message: MessageView) => void
   prependMessages: (messages: MessageView[]) => void
   appendDelta: (assistantMessageId: string, delta: string) => void
+  appendToolCall: (assistantMessageId: string, toolCall: ToolCallView) => void
+  updateToolCall: (assistantMessageId: string, toolCallId: string, patch: Partial<ToolCallView>) => void
   finishAssistant: (assistantMessageId: string, error?: string) => void
   setStreaming: (streaming: boolean) => void
   setEventSource: (es: EventSource | null) => void
@@ -73,6 +76,43 @@ export const useChatStore = create<ChatState>((set) => ({
       messages: state.messages.map((m) =>
         m.id === assistantMessageId ? { ...m, streaming: false, error: Boolean(error) } : m,
       ),
+    })),
+
+  // 工具调用卡片：tool_call_start（不存在则创建 streaming 气泡）
+  appendToolCall: (assistantMessageId, toolCall) =>
+    set((state) => {
+      const idx = state.messages.findIndex((m) => m.id === assistantMessageId)
+      if (idx >= 0) {
+        const next = [...state.messages]
+        next[idx] = { ...next[idx], toolCalls: [...(next[idx].toolCalls ?? []), toolCall] }
+        return { messages: next }
+      }
+      return {
+        messages: [
+          ...state.messages,
+          {
+            id: assistantMessageId,
+            role: 'ASSISTANT',
+            content: '',
+            metadata: null,
+            createdAt: new Date().toISOString(),
+            streaming: true,
+            toolCalls: [toolCall],
+          },
+        ],
+      }
+    }),
+
+  // tool_call_end：按 toolCallId 配对更新卡片
+  updateToolCall: (assistantMessageId, toolCallId, patch) =>
+    set((state) => ({
+      messages: state.messages.map((m) => {
+        if (m.id !== assistantMessageId || !m.toolCalls) return m
+        return {
+          ...m,
+          toolCalls: m.toolCalls.map((tc) => (tc.toolCallId === toolCallId ? { ...tc, ...patch } : tc)),
+        }
+      }),
     })),
 
   setStreaming: (streaming) => set({ isStreaming: streaming }),

@@ -4,6 +4,7 @@ import { listMessages } from '../../../api/chatApi'
 import { useChatStore } from '../../../stores/chatStore'
 import { useChatStream } from '../../../features/chat/hooks/useChatStream'
 import type { ConversationSummaryResponse, MessageResponse, MessageView } from '../../../types/chat'
+import type { ToolCallView } from '../../../types/tool'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
 
@@ -13,6 +14,46 @@ type ChatPanelProps = {
 
 function toView(m: MessageResponse): MessageView {
   return { id: m.id, role: m.role, content: m.content, metadata: m.metadata, createdAt: m.createdAt }
+}
+
+/**
+ * 历史回放重建：把 ASSISTANT.metadata.toolCalls 展开为卡片，并合并其后 TOOL 消息的结果
+ * （按 toolCallId 配对），TOOL 消息本身从视图移除（已并入卡片）。与实时流同渲染。
+ */
+function reconstructToolCards(views: MessageView[]): MessageView[] {
+  const result: MessageView[] = []
+  for (const m of views) {
+    if (m.role === 'TOOL') {
+      // 合并到最近一个 ASSISTANT 的同 toolCallId 卡片
+      const target = [...result].reverse().find((r) => r.role === 'ASSISTANT' && r.toolCalls?.length)
+      const tcId = m.metadata?.toolCallId
+      if (target && tcId) {
+        const card = target.toolCalls!.find((c) => c.toolCallId === tcId)
+        if (card) {
+          card.output = m.content
+          card.toolCallLogId = m.metadata?.toolCallLogId ?? null
+          card.toolName = m.metadata?.toolName ?? card.toolName
+          card.status = 'SUCCESS'
+        }
+      }
+      continue // TOOL 消息并入卡片，不单独渲染
+    }
+    if (m.role === 'ASSISTANT' && m.metadata?.toolCalls && m.metadata.toolCalls.length > 0) {
+      const cards: ToolCallView[] = m.metadata.toolCalls.map((tc) => ({
+        toolCallId: tc.id,
+        toolName: tc.name,
+        args: tc.args ?? null,
+        status: null,
+        output: null,
+        durationMs: null,
+        toolCallLogId: null,
+      }))
+      result.push({ ...m, toolCalls: cards })
+      continue
+    }
+    result.push(m)
+  }
+  return result
 }
 
 /**
@@ -43,7 +84,7 @@ function ChatPanel({ conversation }: ChatPanelProps) {
     listMessages(conversationId, { limit: 20 })
       .then((res) => {
         if (cancelled) return
-        const view = res.records.slice().reverse().map(toView)
+        const view = reconstructToolCards(res.records.slice().reverse().map(toView))
         setCurrentConversation(conversationId, view)
         setHistoryCursor(res.nextCursor)
         setHasMore(res.hasMore)
