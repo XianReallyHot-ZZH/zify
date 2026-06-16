@@ -21,6 +21,10 @@ public class ChatMessage {
     private List<ToolCallDTO> toolCalls;
     /** TOOL：对应的 ASSISTANT toolCall id（可空）。 */
     private String toolCallId;
+    /** TOOL：工具名快照（落 message.metadata.toolName，渲染工具卡片）。 */
+    private String toolName;
+    /** TOOL：tool_call_log.id（落 message.metadata.toolCallLogId，下钻）。 */
+    private String toolCallLogId;
 
     public ChatMessage() {
     }
@@ -74,5 +78,21 @@ public class ChatMessage {
 
     public void setToolCallId(String toolCallId) {
         this.toolCallId = toolCallId;
+    }
+
+    public String getToolName() {
+        return toolName;
+    }
+
+    public void setToolName(String toolName) {
+        this.toolName = toolName;
+    }
+
+    public String getToolCallLogId() {
+        return toolCallLogId;
+    }
+
+    public void setToolCallLogId(String toolCallLogId) {
+        this.toolCallLogId = toolCallLogId;
     }
 }

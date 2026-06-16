@@ -17,15 +17,20 @@ import com.zify.common.exception.ErrorCode;
 import com.zify.common.persistence.id.IdGenerator;
 import com.zify.common.web.CursorPageRequest;
 import com.zify.common.web.CursorPageResult;
+import com.zify.engine.api.dto.ChatMessage;
+import com.zify.engine.api.dto.TokenUsage;
 import com.zify.engine.config.ChatContextProperties;
 import com.zify.engine.domain.TokenEstimator;
+import com.zify.model.api.dto.chat.ToolCallDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -126,6 +131,88 @@ public class MessageService {
                 .eq(ConversationEntity::getId, conversationId)
                 .setSql("message_count = message_count + 1")
                 .set(ConversationEntity::getLastMessageAt, message.getCreatedAt()));
+    }
+
+    /**
+     * P2：批量落库本轮 ReAct 新增消息序列（ASSISTANT-toolCall / TOOL / 最终 ASSISTANT）。
+     * <p>
+     * 短事务，仅 DB 写（在 LLM/工具调用之外）。message id 用 engine 给的 messageId/roundId；
+     * conversation.message_count += newMessages.size()，last_message_at=now。
+     */
+    @Transactional
+    public void persistTurn(String conversationId, List<ChatMessage> newMessages, String finalAssistantId,
+                            AgentConfigDTO agent, TokenUsage usage, String finishReason, long durationMs) {
+        LocalDateTime lastAt = null;
+        for (ChatMessage m : newMessages) {
+            MessageEntity entity = new MessageEntity();
+            entity.setId(m.getMessageId() != null ? m.getMessageId() : IdGenerator.uuid());
+            entity.setConversationId(conversationId);
+            entity.setRole(m.getRole());
+            entity.setContent(m.getContent() == null ? "" : m.getContent());
+            entity.setMetadata(buildTurnMetadata(m, finalAssistantId, agent, usage, finishReason, durationMs));
+            messageMapper.insert(entity);
+            lastAt = entity.getCreatedAt();
+        }
+        if (newMessages.isEmpty()) {
+            return;
+        }
+        LambdaUpdateWrapper<ConversationEntity> upd = new LambdaUpdateWrapper<ConversationEntity>()
+                .eq(ConversationEntity::getId, conversationId)
+                .setSql("message_count = message_count + " + newMessages.size());
+        if (lastAt != null) {
+            upd.set(ConversationEntity::getLastMessageAt, lastAt);
+        }
+        conversationMapper.update(null, upd);
+    }
+
+    /**
+     * 按 role 构造 message.metadata（§3.5）：
+     * <ul>
+     *   <li>TOOL：{toolCallId, toolName, toolCallLogId}</li>
+     *   <li>ASSISTANT 最终轮：{modelId, tokens, finishReason, durationMs}（+ toolCalls 若有）</li>
+     *   <li>ASSISTANT 中间轮（带 toolCall）：{toolCalls:[{id,name,args}]}</li>
+     * </ul>
+     */
+    private Map<String, Object> buildTurnMetadata(ChatMessage m, String finalAssistantId,
+                                                  AgentConfigDTO agent, TokenUsage usage,
+                                                  String finishReason, long durationMs) {
+        String role = m.getRole();
+        if ("TOOL".equals(role)) {
+            Map<String, Object> md = new LinkedHashMap<>();
+            md.put("toolCallId", m.getToolCallId());
+            md.put("toolName", m.getToolName());
+            md.put("toolCallLogId", m.getToolCallLogId());
+            return md;
+        }
+        if ("ASSISTANT".equals(role)) {
+            Map<String, Object> md = new LinkedHashMap<>();
+            boolean isFinal = m.getMessageId() != null && m.getMessageId().equals(finalAssistantId);
+            if (isFinal) {
+                if (agent != null) {
+                    md.put("modelId", agent.getModelId());
+                }
+                if (usage != null) {
+                    md.put("promptTokens", usage.getPromptTokens());
+                    md.put("completionTokens", usage.getCompletionTokens());
+                    md.put("totalTokens", usage.getTotalTokens());
+                }
+                md.put("finishReason", finishReason);
+                md.put("durationMs", durationMs);
+            }
+            if (m.getToolCalls() != null && !m.getToolCalls().isEmpty()) {
+                List<Map<String, Object>> tcs = new ArrayList<>();
+                for (ToolCallDTO tc : m.getToolCalls()) {
+                    Map<String, Object> t = new LinkedHashMap<>();
+                    t.put("id", tc.getId());
+                    t.put("name", tc.getName());
+                    t.put("args", tc.getArgs());
+                    tcs.add(t);
+                }
+                md.put("toolCalls", tcs);
+            }
+            return md.isEmpty() ? null : md;
+        }
+        return null;
     }
 
     /**

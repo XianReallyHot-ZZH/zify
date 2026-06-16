@@ -205,6 +205,8 @@ public class ReActLoop {
             String output = exec.result.getOutput() == null ? "" : exec.result.getOutput();
             ChatMessage engineTool = new ChatMessage(ROLE_TOOL, output, IdGenerator.uuid());
             engineTool.setToolCallId(exec.tc.getId());
+            engineTool.setToolName(exec.tc.getName());
+            engineTool.setToolCallLogId(exec.result.getToolCallLogId());
             newMessages.add(engineTool);
             com.zify.model.api.dto.chat.ChatMessage modelTool =
                     new com.zify.model.api.dto.chat.ChatMessage(ROLE_TOOL, output);
