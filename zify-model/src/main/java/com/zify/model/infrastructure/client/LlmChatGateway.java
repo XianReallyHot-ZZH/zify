@@ -104,7 +104,7 @@ public class LlmChatGateway {
         ChatCallContext ctx = new ChatCallContext(
                 providerType, provider.getBaseUrl(), apiKey, modelName,
                 provider.getExtraConfig(), providerId,
-                command.getMessages(), merged, deadline, SCENARIO);
+                command.getMessages(), merged, deadline, SCENARIO, command.getToolDefinitions());
 
         // 8. 跟踪 sink：记录是否已发 delta（供重试决策）
         AtomicBoolean deltaSent = new AtomicBoolean(false);

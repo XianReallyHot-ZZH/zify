@@ -2,6 +2,7 @@ package com.zify.model.infrastructure.client;
 
 import com.zify.model.api.dto.chat.ChatMessage;
 import com.zify.model.api.dto.chat.ChatOptions;
+import com.zify.model.api.dto.chat.ToolDefinitionDTO;
 
 import java.time.Instant;
 import java.util.List;
@@ -34,10 +35,20 @@ public class ChatCallContext {
     private final Instant deadline;
     /** 调用场景（chat_stream / summary 等），仅用于日志/异常 */
     private final String scenario;
+    /** 下发的工具定义（可空；P2 工具调用） */
+    private final List<ToolDefinitionDTO> toolDefinitions;
 
     public ChatCallContext(String providerType, String baseUrl, String apiKey, String modelName,
                            Map<String, Object> extraConfig, String providerId,
                            List<ChatMessage> messages, ChatOptions options, Instant deadline, String scenario) {
+        this(providerType, baseUrl, apiKey, modelName, extraConfig, providerId,
+                messages, options, deadline, scenario, null);
+    }
+
+    public ChatCallContext(String providerType, String baseUrl, String apiKey, String modelName,
+                           Map<String, Object> extraConfig, String providerId,
+                           List<ChatMessage> messages, ChatOptions options, Instant deadline, String scenario,
+                           List<ToolDefinitionDTO> toolDefinitions) {
         this.providerType = providerType;
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
@@ -48,6 +59,7 @@ public class ChatCallContext {
         this.options = options;
         this.deadline = deadline;
         this.scenario = scenario;
+        this.toolDefinitions = toolDefinitions;
     }
 
     public String getProviderType() {
@@ -88,5 +100,9 @@ public class ChatCallContext {
 
     public String getScenario() {
         return scenario;
+    }
+
+    public List<ToolDefinitionDTO> getToolDefinitions() {
+        return toolDefinitions;
     }
 }

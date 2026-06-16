@@ -48,6 +48,9 @@ public class AnthropicChatClient extends AbstractSpringAiChatClient {
                 builder.topP(opts.getTopP());
             }
         }
+        if (ctx.getToolDefinitions() != null && !ctx.getToolDefinitions().isEmpty()) {
+            builder.toolCallbacks(toToolCallbacks(ctx.getToolDefinitions()));
+        }
         return builder.build();
     }
 

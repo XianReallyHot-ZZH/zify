@@ -31,6 +31,9 @@ public class OpenAiChatClient extends AbstractSpringAiChatClient {
     protected ChatOptions buildOptions(ChatCallContext ctx) {
         OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder().model(ctx.getModelName());
         applyOptions(builder, ctx.getOptions());
+        if (ctx.getToolDefinitions() != null && !ctx.getToolDefinitions().isEmpty()) {
+            builder.toolCallbacks(toToolCallbacks(ctx.getToolDefinitions()));
+        }
         return builder.build();
     }
 

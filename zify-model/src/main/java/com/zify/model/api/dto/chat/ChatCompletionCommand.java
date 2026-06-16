@@ -18,6 +18,9 @@ public class ChatCompletionCommand {
     /** 调用参数，可空 */
     private ChatOptions options;
 
+    /** 下发的工具定义（可空；空 = P1 零工具行为不变） */
+    private List<ToolDefinitionDTO> toolDefinitions;
+
     public ChatCompletionCommand() {
     }
 
@@ -49,5 +52,13 @@ public class ChatCompletionCommand {
 
     public void setOptions(ChatOptions options) {
         this.options = options;
+    }
+
+    public List<ToolDefinitionDTO> getToolDefinitions() {
+        return toolDefinitions;
+    }
+
+    public void setToolDefinitions(List<ToolDefinitionDTO> toolDefinitions) {
+        this.toolDefinitions = toolDefinitions;
     }
 }
