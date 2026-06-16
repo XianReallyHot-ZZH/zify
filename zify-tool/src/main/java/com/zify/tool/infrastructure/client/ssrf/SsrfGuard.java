@@ -1,5 +1,7 @@
 package com.zify.tool.infrastructure.client.ssrf;
 
+import com.zify.common.exception.BusinessException;
+import com.zify.common.exception.ErrorCode;
 import com.zify.tool.config.ToolProperties;
 import com.zify.tool.infrastructure.exception.ToolNonRetryableException;
 import org.slf4j.Logger;
@@ -89,6 +91,18 @@ public class SsrfGuard {
                             toolId, toolName, scenario);
                 }
             }
+        }
+    }
+
+    /**
+     * 保存时校验（即时反馈）：违例转 {@link BusinessException}(TOOL_SSRF_BLOCKED)。
+     * 运行时仍用 {@link #validate}（违例为 ToolNonRetryableException → ERROR 回灌）。
+     */
+    public void validateForSave(String url, String name) {
+        try {
+            validate(url, null, name, "save");
+        } catch (ToolNonRetryableException e) {
+            throw new BusinessException(ErrorCode.TOOL_SSRF_BLOCKED);
         }
     }
 

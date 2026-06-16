@@ -65,7 +65,7 @@ public class McpServerService {
 
     public McpServerDetailResponse create(CreateMcpServerRequest request) {
         validateName(request.getName(), null);
-        ssrfGuard.validate(request.getBaseUrl(), null, request.getName(), "mcp_save");
+        ssrfGuard.validateForSave(request.getBaseUrl(), request.getName());
         String plainAuth = AuthConfigs.forMcp(request.getAuthType(), request.getAuthHeaderName(), request.getCredential());
         String cipher = plainAuth != null ? secretEncryptor.encrypt(plainAuth) : null;
 
@@ -108,7 +108,7 @@ public class McpServerService {
         }
         boolean reconnect = false;
         if (request.getBaseUrl() != null && !request.getBaseUrl().equals(entity.getBaseUrl())) {
-            ssrfGuard.validate(request.getBaseUrl(), id, entity.getName(), "mcp_save");
+            ssrfGuard.validateForSave(request.getBaseUrl(), entity.getName());
             reconnect = true;
         }
         String prevAuth = entity.getAuthConfig();
@@ -159,7 +159,16 @@ public class McpServerService {
 
     /** 测试未保存配置（POST /test）。 */
     public McpServerTestResult testConfig(CreateMcpServerRequest request) {
-        ssrfGuard.validate(request.getBaseUrl(), null, request.getName(), "mcp_test");
+        try {
+            ssrfGuard.validate(request.getBaseUrl(), null, request.getName(), "mcp_test");
+        } catch (com.zify.tool.infrastructure.exception.ToolNonRetryableException e) {
+            McpServerTestResult blocked = new McpServerTestResult();
+            blocked.setSuccess(false);
+            blocked.setMessage("URL 命中 SSRF 黑名单");
+            blocked.setLatencyMs(0);
+            blocked.setDiscoveredTools(List.of());
+            return blocked;
+        }
         String plainAuth = AuthConfigs.forMcp(request.getAuthType(), request.getAuthHeaderName(), request.getCredential());
         String cipher = plainAuth != null ? secretEncryptor.encrypt(plainAuth) : null;
         McpServerEntity temp = new McpServerEntity();
@@ -183,6 +192,16 @@ public class McpServerService {
     // ── 内部 ───────────────────────────────────────────────
 
     private McpServerTestResult doTest(McpServerEntity server) {
+        try {
+            ssrfGuard.validate(server.getBaseUrl(), server.getId(), server.getName(), "mcp_test");
+        } catch (com.zify.tool.infrastructure.exception.ToolNonRetryableException e) {
+            McpServerTestResult blocked = new McpServerTestResult();
+            blocked.setSuccess(false);
+            blocked.setMessage("URL 命中 SSRF 黑名单");
+            blocked.setLatencyMs(0);
+            blocked.setDiscoveredTools(List.of());
+            return blocked;
+        }
         long start = System.currentTimeMillis();
         McpTestResult res = clientFactory.test(server);
         long latency = System.currentTimeMillis() - start;
