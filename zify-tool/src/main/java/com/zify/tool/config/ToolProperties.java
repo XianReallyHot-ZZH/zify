@@ -123,6 +123,8 @@ public class ToolProperties {
     public static class Executor {
         /** 全局并发上限（全局 Semaphore，per-tool 限流留二期）。 */
         private int maxConcurrent = 50;
+        /** 全局 Semaphore 获取超时（拿不到许可 → 工具繁忙回灌）。 */
+        private Duration acquireTimeout = Duration.ofSeconds(2);
 
         public int getMaxConcurrent() {
             return maxConcurrent;
@@ -130,6 +132,14 @@ public class ToolProperties {
 
         public void setMaxConcurrent(int maxConcurrent) {
             this.maxConcurrent = maxConcurrent;
+        }
+
+        public Duration getAcquireTimeout() {
+            return acquireTimeout;
+        }
+
+        public void setAcquireTimeout(Duration acquireTimeout) {
+            this.acquireTimeout = acquireTimeout;
         }
     }
 
