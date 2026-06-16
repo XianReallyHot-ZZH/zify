@@ -38,4 +38,25 @@ function updateAgentStatus(id: string, data: UpdateAgentStatusRequest): Promise<
   return apiPut(`/agents/${id}/status`, data)
 }
 
-export { createAgent, listAgents, getAgent, updateAgent, deleteAgent, updateAgentStatus }
+// ─── Agent 工具绑定（P2） ─────────────────────────────────
+
+/** 查询 Agent 绑定的工具。 */
+function getBoundTools(agentId: string): Promise<import('../types/tool').AgentToolsResponse> {
+  return apiGet(`/agents/${agentId}/tools`)
+}
+
+/** 全量覆盖工具绑定。 */
+function bindTools(agentId: string, toolIds: string[]): Promise<import('../types/tool').AgentToolsResponse> {
+  return apiPut(`/agents/${agentId}/tools`, { toolIds })
+}
+
+export {
+  createAgent,
+  listAgents,
+  getAgent,
+  updateAgent,
+  deleteAgent,
+  updateAgentStatus,
+  getBoundTools,
+  bindTools,
+}

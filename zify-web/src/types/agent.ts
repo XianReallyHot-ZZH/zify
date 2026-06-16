@@ -2,10 +2,12 @@
  * Agent 模块 HTTP 契约类型（对齐后端 /api/agents 的 request/response）。
  */
 
+import type { BoundTool } from './tool'
+
 export type AgentType = 'REACT' | 'WORKFLOW'
 export type AgentStatus = 'ACTIVE' | 'INACTIVE'
 
-/** Agent 详情响应（列表也复用此类型）。 */
+/** Agent 详情响应（列表也复用此类型）。P2 增 toolIds/toolSummaries。 */
 export type AgentResponse = {
   id: string
   name: string
@@ -17,6 +19,10 @@ export type AgentResponse = {
   modelName: string | null
   createdAt: string
   updatedAt: string
+  /** P2：已绑定工具 ID（详情返回）。 */
+  toolIds?: string[]
+  /** P2：已绑定工具摘要（含可用性）。 */
+  toolSummaries?: BoundTool[]
 }
 
 export type CreateAgentRequest = {

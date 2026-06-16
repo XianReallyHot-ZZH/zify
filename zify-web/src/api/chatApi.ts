@@ -51,6 +51,8 @@ function listMessages(
 
 type ChatStreamHandlers = {
   onDelta: (e: Extract<ChatStreamEvent, { type: 'message_delta' }>) => void
+  onToolCallStart?: (e: Extract<ChatStreamEvent, { type: 'tool_call_start' }>) => void
+  onToolCallEnd?: (e: Extract<ChatStreamEvent, { type: 'tool_call_end' }>) => void
   onDone: (e: Extract<ChatStreamEvent, { type: 'done' }>) => void
   onError: (e: Extract<ChatStreamEvent, { type: 'run_error' }>) => void
 }
@@ -64,6 +66,12 @@ function openChatStream(messageId: string, handlers: ChatStreamHandlers): EventS
 
   es.addEventListener('message_delta', (ev) => {
     handlers.onDelta(JSON.parse((ev as MessageEvent).data))
+  })
+  es.addEventListener('tool_call_start', (ev) => {
+    handlers.onToolCallStart?.(JSON.parse((ev as MessageEvent).data))
+  })
+  es.addEventListener('tool_call_end', (ev) => {
+    handlers.onToolCallEnd?.(JSON.parse((ev as MessageEvent).data))
   })
   es.addEventListener('done', (ev) => {
     handlers.onDone(JSON.parse((ev as MessageEvent).data))

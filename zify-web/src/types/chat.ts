@@ -27,6 +27,13 @@ export type ConversationSummaryResponse = {
 
 export type MessageRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL'
 
+/** ASSISTANT 消息 metadata.toolCalls 的单项（历史回放用）。 */
+export type ToolCallMeta = {
+  id: string
+  name: string
+  args: string | null
+}
+
 export type MessageMetadata = {
   modelId?: string
   modelName?: string
@@ -36,6 +43,12 @@ export type MessageMetadata = {
   totalTokens?: number
   finishReason?: string
   durationMs?: number
+  /** ASSISTANT（中间轮，带 toolCall）。 */
+  toolCalls?: ToolCallMeta[]
+  /** TOOL 消息：配对的 toolCall id + 工具名 + 日志 id。 */
+  toolCallId?: string
+  toolName?: string
+  toolCallLogId?: string
 } | null
 
 export type MessageResponse = {
@@ -73,7 +86,10 @@ export type MessageListQuery = {
 
 /**
  * 前端视图消息（chatStore 中维护，含流式临时态）。
+ * P2：toolCalls 承载实时流 + 历史回放的工具卡片。
  */
+import type { ToolCallView } from './tool'
+
 export type MessageView = {
   id: string
   role: string
@@ -84,13 +100,33 @@ export type MessageView = {
   streaming?: boolean
   /** 生成出错时的提示（仅 ASSISTANT 临时态） */
   error?: boolean
+  /** P2：本轮工具调用卡片（按 toolCallId 配对）。 */
+  toolCalls?: ToolCallView[]
 }
 
 /**
- * SSE 流式事件（对齐后端 message_delta / done / run_error）。
- * P1 不收 tool_call（P2 才有工具），此处不定义。
+ * SSE 流式事件（对齐后端 message_delta / tool_call_start / tool_call_end / done / run_error）。
  */
 export type ChatStreamEvent =
   | { type: 'message_delta'; conversationId: string; assistantMessageId: string; delta: string }
+  | {
+      type: 'tool_call_start'
+      conversationId: string
+      assistantMessageId: string
+      toolCallId: string
+      toolName: string
+      args: string
+    }
+  | {
+      type: 'tool_call_end'
+      conversationId: string
+      assistantMessageId: string
+      toolCallId: string
+      toolName: string
+      status: string
+      output: string
+      durationMs: number
+      toolCallLogId: string
+    }
   | { type: 'done'; conversationId: string; assistantMessageId: string }
   | { type: 'run_error'; message: string; retryable?: boolean }
