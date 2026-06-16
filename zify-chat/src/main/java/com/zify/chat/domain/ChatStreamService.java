@@ -259,15 +259,15 @@ public class ChatStreamService {
     }
 
     /**
-     * 加载活窗口历史（USER/ASSISTANT，ASC，含本轮 user）。
+     * 加载活窗口历史（USER/ASSISTANT/TOOL，ASC，含本轮 user）。
      * summaryCoveredId 非空 → 其之后的消息；为空 → 最近 RECENT_WINDOW_LIMIT 条。
      * <p>
-     * P2 §17 扩展为含 TOOL（turn 级摘要）；本任务先 USER/ASSISTANT（TOOL 接入在 §17）。
+     * P2 §17：含 TOOL；ASSISTANT 带 toolCalls、TOOL 带 toolCallId（从 metadata 重建多轮工具上下文）。
      */
     private List<ChatMessage> loadActiveWindow(String conversationId, String summaryCoveredId) {
         LambdaQueryWrapper<MessageEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(MessageEntity::getConversationId, conversationId);
-        wrapper.in(MessageEntity::getRole, "USER", "ASSISTANT");
+        wrapper.in(MessageEntity::getRole, "USER", "ASSISTANT", "TOOL");
 
         List<MessageEntity> entities;
         if (summaryCoveredId != null && !summaryCoveredId.isBlank()) {
@@ -286,8 +286,45 @@ public class ChatStreamService {
         }
 
         return entities.stream()
-                .map(m -> new ChatMessage(m.getRole(), m.getContent(), m.getId()))
+                .map(this::toEngineMessage)
                 .toList();
+    }
+
+    /**
+     * 从历史 MessageEntity 重建 engine ChatMessage：ASSISTANT 带 toolCalls、TOOL 带 toolCallId（§3.5 metadata）。
+     */
+    @SuppressWarnings("unchecked")
+    private ChatMessage toEngineMessage(MessageEntity m) {
+        ChatMessage msg = new ChatMessage(m.getRole(), m.getContent(), m.getId());
+        Map<String, Object> md = m.getMetadata();
+        if (md == null) {
+            return msg;
+        }
+        if ("TOOL".equals(m.getRole())) {
+            Object tcId = md.get("toolCallId");
+            if (tcId != null) {
+                msg.setToolCallId(String.valueOf(tcId));
+            }
+        } else if ("ASSISTANT".equals(m.getRole())) {
+            Object tcs = md.get("toolCalls");
+            if (tcs instanceof List<?> list) {
+                List<com.zify.model.api.dto.chat.ToolCallDTO> dtos = new ArrayList<>();
+                for (Object o : list) {
+                    if (o instanceof Map<?, ?> mm) {
+                        dtos.add(new com.zify.model.api.dto.chat.ToolCallDTO(
+                                str(mm.get("id")), str(mm.get("name")), str(mm.get("args"))));
+                    }
+                }
+                if (!dtos.isEmpty()) {
+                    msg.setToolCalls(dtos);
+                }
+            }
+        }
+        return msg;
+    }
+
+    private static String str(Object o) {
+        return o == null ? null : String.valueOf(o);
     }
 
     private void sendEvent(SseEmitter emitter, java.util.concurrent.atomic.AtomicBoolean clientGone,
