@@ -53,6 +53,60 @@ public class McpClientFactory {
                 .build();
     }
 
+    /**
+     * 测试连接（不持久化连接/工具）：建连 → initialize → listTools → 关闭。
+     * 成功返回发现的工具，失败返回 message（不抛）。initialize 受 mcp-handshake 超时约束。
+     */
+    public McpTestResult test(McpServerEntity server) {
+        McpSyncClient client = build(server);
+        try {
+            client.initialize();
+            io.modelcontextprotocol.spec.McpSchema.ListToolsResult result = client.listTools();
+            java.util.List<io.modelcontextprotocol.spec.McpSchema.Tool> tools =
+                    result == null || result.tools() == null ? java.util.List.of() : result.tools();
+            return new McpTestResult(true, null, tools);
+        } catch (Exception e) {
+            return new McpTestResult(false, brief(e), java.util.List.of());
+        } finally {
+            try {
+                client.close();
+            } catch (Exception ignored) {
+                // 关闭异常忽略
+            }
+        }
+    }
+
+    /** 测试连接结果。 */
+    public static final class McpTestResult {
+        private final boolean success;
+        private final String message;
+        private final java.util.List<io.modelcontextprotocol.spec.McpSchema.Tool> tools;
+
+        public McpTestResult(boolean success, String message,
+                             java.util.List<io.modelcontextprotocol.spec.McpSchema.Tool> tools) {
+            this.success = success;
+            this.message = message;
+            this.tools = tools;
+        }
+
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public java.util.List<io.modelcontextprotocol.spec.McpSchema.Tool> getTools() {
+            return tools;
+        }
+    }
+
+    private static String brief(Throwable e) {
+        String msg = e.getMessage();
+        return msg == null ? e.getClass().getSimpleName() : (msg.length() > 240 ? msg.substring(0, 240) : msg);
+    }
+
     private McpClientTransport buildTransport(String transportType, String baseUrl, HttpRequest.Builder requestBuilder) {
         if ("SSE".equalsIgnoreCase(transportType)) {
             HttpClientSseClientTransport.Builder b = HttpClientSseClientTransport.builder(baseUrl)
